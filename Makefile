@@ -1,37 +1,44 @@
-# Nom de l'exécutable final
-EXEC = programme
+# Executable names
+CLIENT_EXEC = client
+SERVER_EXEC = server
 
-# Compilateur
+# Compiler
 CC = gcc
 
-# Options de compilation (ajoute -g pour le debug ou -Wall pour les warnings)
+# Compilation flags
 CFLAGS = -Wall -Wextra -std=c11
 
-# Tous les fichiers .c du dossier courant
-SRCS = $(wildcard *.c)
+# Source files
+CLIENT_SRCS = client2.c
+SERVER_SRCS = server2.c
 
-# Transformation des .c en .o
-OBJS = $(SRCS:.c=.o)
+# Object files
+CLIENT_OBJS = $(CLIENT_SRCS:.c=.o)
+SERVER_OBJS = $(SERVER_SRCS:.c=.o)
 
-# Règle par défaut
-all: $(EXEC)
+# Default rule builds both
+all: $(CLIENT_EXEC) $(SERVER_EXEC)
 
-# Linkage
-$(EXEC): $(OBJS)
+# Client build
+$(CLIENT_EXEC): $(CLIENT_OBJS)
 	$(CC) $(CFLAGS) -o $@ $^
 
-# Compilation des .c en .o (avec dépendances automatiques)
+# Server build
+$(SERVER_EXEC): $(SERVER_OBJS)
+	$(CC) $(CFLAGS) -o $@ $^
+
+# Compile .c to .o
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Nettoyage
+# Clean object files and executables
 clean:
-	rm -f *.o *.d $(EXEC)
+	rm -f *.o *.d $(CLIENT_EXEC) $(SERVER_EXEC)
 
-# Nettoyage complet
+# Full clean
 fclean: clean
 
-# Recompilation complète
+# Rebuild everything
 re: fclean all
 
 .PHONY: all clean fclean re

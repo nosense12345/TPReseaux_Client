@@ -4,7 +4,10 @@
 #include <string.h>
 
 #include "server2.h"
-#include "client2.h"
+#include <sys/select.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 
 static void init(void)
 {
@@ -26,9 +29,9 @@ static void end(void)
 #endif
 }
 
-static void app(void)
+static void server_app(void)
 {
-   SOCKET sock = init_connection();
+   SOCKET sock = server_init_connection();
    char buffer[BUF_SIZE];
    /* the index for the array */
    int actual = 0;
@@ -71,7 +74,7 @@ static void app(void)
       {
          /* new client */
          SOCKADDR_IN csin = { 0 };
-         size_t sinsize = sizeof csin;
+         socklen_t sinsize = sizeof(csin);
          int csock = accept(sock, (SOCKADDR *)&csin, &sinsize);
          if(csock == SOCKET_ERROR)
          {
@@ -91,7 +94,7 @@ static void app(void)
 
          FD_SET(csock, &rdfs);
 
-         Client c = { csock };
+         Client c = { .sock = csock, .name = "" };
          strncpy(c.name, buffer, BUF_SIZE - 1);
          clients[actual] = c;
          actual++;
@@ -167,7 +170,7 @@ static void send_message_to_all_clients(Client *clients, Client sender, int actu
    }
 }
 
-static int init_connection(void)
+static int server_init_connection(void)
 {
    SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
    SOCKADDR_IN sin = { 0 };
@@ -231,7 +234,7 @@ int main(int argc, char **argv)
 {
    init();
 
-   app();
+   server_app();
 
    end();
 

@@ -1,11 +1,6 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-#ifdef WIN32
-
-#include <winsock2.h>
-
-#elif defined (linux)
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -21,11 +16,6 @@ typedef struct sockaddr_in SOCKADDR_IN;
 typedef struct sockaddr SOCKADDR;
 typedef struct in_addr IN_ADDR;
 
-#else
-
-#error not defined for this platform
-
-#endif
 
 #define CRLF        "\r\n"
 #define PORT         1977
@@ -33,12 +23,18 @@ typedef struct in_addr IN_ADDR;
 
 #define BUF_SIZE    1024
 
-#include "client2.h"
+// In server2.h or a separate client_struct.h
+typedef struct {
+    SOCKET sock;
+    char name[BUF_SIZE];
+} Client;
+
+
 
 static void init(void);
 static void end(void);
-static void app(void);
-static int init_connection(void);
+static void server_app(void);
+static int server_init_connection(void);
 static void end_connection(int sock);
 static int read_client(SOCKET sock, char *buffer);
 static void write_client(SOCKET sock, const char *buffer);

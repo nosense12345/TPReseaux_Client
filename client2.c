@@ -5,6 +5,28 @@
 
 #include "client2.h"
 
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    typedef int socklen_t;
+    
+#else
+    #include <sys/types.h>
+    #include <sys/socket.h>
+    #include <sys/select.h>
+    #include <netinet/in.h>
+    #include <netdb.h>
+    #include <unistd.h>
+    #include <arpa/inet.h>
+    #define INVALID_SOCKET -1
+    #define SOCKET_ERROR -1
+    typedef int SOCKET;
+    
+#endif
+
+
+
+
 static void init(void)
 {
 #ifdef WIN32
@@ -105,7 +127,7 @@ static int init_connection(const char *address)
       exit(EXIT_FAILURE);
    }
 
-   sin.sin_addr = *(IN_ADDR *) hostinfo->h_addr;
+   sin.sin_addr = *(struct in_addr *)hostinfo->h_addr_list[0];
    sin.sin_port = htons(PORT);
    sin.sin_family = AF_INET;
 
