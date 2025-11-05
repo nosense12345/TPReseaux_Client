@@ -24,9 +24,26 @@ typedef struct in_addr IN_ADDR;
 #define BUF_SIZE    1024
 
 // In server2.h or a separate client_struct.h
-typedef struct {
-    SOCKET sock;
-    char name[BUF_SIZE];
+#define BIO_MAX_LINES 10
+#define BIO_MAX_LENGTH 80
+
+#define MAX_FRIENDS 10
+
+typedef enum
+{
+   STATE_LOBBY,
+   STATE_CHALLENGED,
+   STATE_INGAME
+} ClientState;
+
+typedef struct
+{
+   SOCKET sock;
+   char name[BUF_SIZE];
+   char bio[BIO_MAX_LINES][BIO_MAX_LENGTH];
+   int friends[MAX_FRIENDS];
+   ClientState state;
+   int opponent;
 } Client;
 
 

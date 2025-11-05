@@ -53,9 +53,12 @@ static void app(const char *address, const char *name)
    char buffer[BUF_SIZE];
 
    fd_set rdfs;
+   int bio_mode = 0;
 
    /* send our name */
-   write_server(sock, name);
+   char register_command[BUF_SIZE];
+   snprintf(register_command, BUF_SIZE, "REGISTER %s", name);
+   write_server(sock, register_command);
 
    while(1)
    {
@@ -90,7 +93,86 @@ static void app(const char *address, const char *name)
                buffer[BUF_SIZE - 1] = 0;
             }
          }
-         write_server(sock, buffer);
+         if (bio_mode) {
+            if (strcmp(buffer, "/endbio") == 0) {
+               bio_mode = 0;
+               printf("Bio editing finished.\n");
+            } else {
+               char bio_command[BUF_SIZE];
+               snprintf(bio_command, BUF_SIZE, "/bio %s", buffer);
+               write_server(sock, bio_command);
+            }
+         } else if (strcmp(buffer, "/list") == 0) {
+            write_server(sock, "LIST");
+         }
+         else if (strncmp(buffer, "/addfriend", 10) == 0) {
+            char command[BUF_SIZE];
+            char friend_name[BUF_SIZE];
+            if(sscanf(buffer, "%s %s", command, friend_name) == 2){
+               snprintf(command, BUF_SIZE, "/addfriend %s", friend_name);
+               write_server(sock, command);
+            } else {
+               printf("Usage: /addfriend <username>\n");
+            }
+         }
+         else if (strncmp(buffer, "/removefriend", 13) == 0) {
+            char command[BUF_SIZE];
+            char friend_name[BUF_SIZE];
+            if(sscanf(buffer, "%s %s", command, friend_name) == 2){
+               snprintf(command, BUF_SIZE, "/removefriend %s", friend_name);
+               write_server(sock, command);
+            } else {
+               printf("Usage: /removefriend <username>\n");
+            }
+         }
+         else if (strcmp(buffer, "/friends") == 0) {
+            write_server(sock, "/friends");
+         }
+         else if (strcmp(buffer, "/clearbio") == 0) {
+            write_server(sock, "/clearbio");
+         }
+         else if (strcmp(buffer, "/bio") == 0) {
+            bio_mode = 1;
+            printf("You are now in bio editing mode. Type /endbio to finish.\n");
+         }
+         else if (strncmp(buffer, "/viewbio", 8) == 0) {
+            char command[BUF_SIZE];
+            char username[BUF_SIZE];
+            if(sscanf(buffer, "%s %s", command, username) == 2){
+               snprintf(command, BUF_SIZE, "/viewbio %s", username);
+               write_server(sock, command);
+            } else {
+               printf("Usage: /viewbio <username>\n");
+            }
+         }
+         else if (strncmp(buffer, "/challenge", 10) == 0) {
+            char command[BUF_SIZE];
+            char challenged_name[BUF_SIZE];
+            if(sscanf(buffer, "%s %s", command, challenged_name) == 2){
+               snprintf(command, BUF_SIZE, "CHALLENGE %s", challenged_name);
+               write_server(sock, command);
+            } else {
+               printf("Usage: /challenge <username>\n");
+            }
+         }
+         else if (strncmp(buffer, "/accept", 7) == 0) {
+            char command[BUF_SIZE];
+            char challenger_name[BUF_SIZE];
+            if(sscanf(buffer, "%s %s", command, challenger_name) == 2){
+               snprintf(command, BUF_SIZE, "ACCEPT %s", challenger_name);
+               write_server(sock, command);
+            }
+         }
+         else if (strncmp(buffer, "/refuse", 7) == 0) {
+            char command[BUF_SIZE];
+            char challenger_name[BUF_SIZE];
+            if(sscanf(buffer, "%s %s", command, challenger_name) == 2){
+               snprintf(command, BUF_SIZE, "REFUSE %s", challenger_name);
+               write_server(sock, command);
+            }
+         } else {
+            write_server(sock, buffer);
+         }
       }
       else if(FD_ISSET(sock, &rdfs))
       {
@@ -101,7 +183,21 @@ static void app(const char *address, const char *name)
             printf("Server disconnected !\n");
             break;
          }
-         puts(buffer);
+         if (strncmp(buffer, "CHALLENGE_FROM", 14) == 0) {
+            char challenger_name[BUF_SIZE];
+            sscanf(buffer, "CHALLENGE_FROM %s", challenger_name);
+            printf("%s has challenged you! Type /accept %s or /refuse %s.\n", challenger_name, challenger_name, challenger_name);
+         } else if (strncmp(buffer, "CHALLENGE_ACCEPTED", 18) == 0) {
+            char opponent_name[BUF_SIZE];
+            sscanf(buffer, "CHALLENGE_ACCEPTED %s", opponent_name);
+            printf("Your challenge has been accepted by %s!\n", opponent_name);
+         } else if (strncmp(buffer, "CHALLENGE_REFUSED", 17) == 0) {
+            char opponent_name[BUF_SIZE];
+            sscanf(buffer, "CHALLENGE_REFUSED %s", opponent_name);
+            printf("%s has refused your challenge.\n", opponent_name);
+         } else {
+            puts(buffer);
+         }
       }
    }
 
@@ -171,7 +267,7 @@ static void write_server(SOCKET sock, const char *buffer)
 
 int main(int argc, char **argv)
 {
-   if(argc < 2)
+   if(argc < 3)
    {
       printf("Usage : %s [address] [pseudo]\n", argv[0]);
       return EXIT_FAILURE;
