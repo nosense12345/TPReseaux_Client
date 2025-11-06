@@ -23,13 +23,13 @@ void ui_clear_screen(void) {
 #endif
 }
 
-void ui_draw_board(const char *board_display, ClientState currentState) {
+void ui_draw_board(const char *board_display) {
     strncpy(current_board_display, board_display, sizeof(current_board_display) - 1);
     current_board_display[sizeof(current_board_display) - 1] = '\0';
-    ui_redraw_all(currentState);
+
 }
 
-void ui_add_message(const char *message, ClientState currentState) {
+void ui_add_message(const char *message) {
     if (message_count < MAX_CHAT_MESSAGES) {
         strncpy(chat_messages[message_count], message, MAX_MESSAGE_LENGTH - 1);
         chat_messages[message_count][MAX_MESSAGE_LENGTH - 1] = '\0';
@@ -43,7 +43,6 @@ void ui_add_message(const char *message, ClientState currentState) {
         strncpy(chat_messages[MAX_CHAT_MESSAGES - 1], message, MAX_MESSAGE_LENGTH - 1);
         chat_messages[MAX_CHAT_MESSAGES - 1][MAX_MESSAGE_LENGTH - 1] = '\0';
     }
-    ui_redraw_all(currentState);
 }
 
 void ui_get_input(char *buffer, int size) {
@@ -77,6 +76,9 @@ void ui_redraw_all(ClientState currentState) {
             break;
         case STATE_CHALLENGED:
             printf("Available commands: /accept [challenger], /refuse [challenger]\n");
+            break;
+        case STATE_CHALLENGING:
+            printf("Available commands: /cancelchallenge\n");
             break;
         case STATE_INGAME:
             printf("Available commands: /move [pit], /quitgame\n");

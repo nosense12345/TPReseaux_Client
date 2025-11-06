@@ -9,8 +9,8 @@
 void ui_init(void);
 void ui_cleanup(void);
 void ui_clear_screen(void);
-void ui_draw_board(const char *board_display, ClientState currentState);
-void ui_add_message(const char *message, ClientState currentState);
+void ui_draw_board(const char *board_display);
+void ui_add_message(const char *message);
 void ui_get_input(char *buffer, int size);
 void ui_redraw_all(ClientState currentState);
 void ui_clear_chat(void);

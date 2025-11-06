@@ -92,7 +92,7 @@ static void app(const char *address, const char *name)
          int n = read_server(sock, buffer);
          if(n == 0)
          {
-            ui_add_message("Server disconnected !\n", currentState);
+            ui_add_message("Server disconnected !\n");
             break;
          }
 
@@ -102,11 +102,15 @@ static void app(const char *address, const char *name)
                int new_state;
                sscanf(line, "STATE_UPDATE %d", &new_state);
                currentState = (ClientState)new_state;
-            } else {
-               ui_add_message(line, currentState);
+            } else if (strcmp(line, "CLEAR_CHAT") == 0) { // New: Handle CLEAR_CHAT message
+               ui_clear_chat();
+            }
+            else {
+               ui_add_message(line);
             }
             line = strtok(NULL, "\n");
          }
+         ui_redraw_all(currentState);
       }
    }
 

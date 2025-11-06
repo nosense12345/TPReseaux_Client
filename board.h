@@ -11,25 +11,9 @@ enum joueur
     PLAYER2
 };
 
-struct listeChaineeBoard
-{
-    int stateHoles[12];
-    enum joueur currentPlayer;
-    struct listeChaineeBoard* next;
-};
-
-struct logBoard
-{
-    int nbMoves;
-    struct listeChaineeBoard* head;
-    struct listeChaineeBoard* tail;
-
-};
-
 struct board
 {
     int stateHoles[12];
-    struct logBoard* logHistory;
     enum joueur currentPlayer;
     int capturedSeeds[2];
     struct game* gameRef;

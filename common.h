@@ -6,6 +6,7 @@ typedef enum
    STATE_LOBBY,
    STATE_BIO,
    STATE_CHALLENGED,
+   STATE_CHALLENGING,
    STATE_INGAME
 } ClientState;
 
