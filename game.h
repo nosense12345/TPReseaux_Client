@@ -2,6 +2,7 @@
 #define GAME_H
 
 #include "board.h"
+#include "server2.h"
 
 enum state
 {
@@ -17,7 +18,7 @@ enum mode
 
 // Forward declarations if needed
 struct chat;
-struct client;
+//struct Client;
 
 struct listeChainee
 {
@@ -29,13 +30,14 @@ struct log
 {
     int nbMoves;
     struct listeChainee* head;
+    struct listeChainee* tail;
 
 };
 
 struct game
 {
-    struct client* player1;
-    struct client* player2;
+    Client* player1;
+    Client* player2;
     int scoreP1;
     int scoreP2;
     struct log* logGame;
@@ -46,11 +48,12 @@ struct game
 
 // Fonctions à importer
 struct chat* create_chat();
+struct chat* delete_the_chat(struct chat* c);
 
 // Function declarations
-struct game* create_game(struct client* player1, struct client* player2, enum mode gameMode);
+struct game* create_game(Client* player1, Client* player2, enum mode gameMode);
 int delete_the_game(struct game* g);
-char* try_a_move(struct game* g, int move, struct board* b);
+int try_a_move(struct game* g, int move, struct board* b);
 int test_a_move(int move, struct board* b);
 int play_a_move(struct game* g, int move, struct board* b);
 int end_the_game(struct game* g);
