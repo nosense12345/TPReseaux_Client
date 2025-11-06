@@ -4,6 +4,8 @@
 #include <string.h>
 
 #include "server2.h"
+#include "game.h"
+#include "board.h"
 #include <sys/select.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -169,7 +171,7 @@ static void server_app(void)
                }
                else if (strncmp(buffer, "/challenge", 10) == 0) {
                   char challenged_name[BUF_SIZE];
-                  sscanf(buffer, "CHALLENGE %s", challenged_name);
+                  sscanf(buffer, "/challenge %s", challenged_name);
 
                   int challenger_idx = -1;
                   for(int j=0; j<actual; j++) {
@@ -225,18 +227,33 @@ static void server_app(void)
                      clients[challenger_idx].opponent = challenged_idx;
                      clients[challenged_idx].opponent = challenger_idx;
 
+                     struct game* g = create_game(&clients[challenger_idx], &clients[challenged_idx], PUBLIC);
+                     struct board* b = create_board(g);
+                     char* board_str = convert_board_to_string(b);
+
                      char acceptance_msg[BUF_SIZE];
-                     snprintf(acceptance_msg, BUF_SIZE, "CHALLENGE_ACCEPTED %s", clients[challenged_idx].name);
+                     snprintf(acceptance_msg, BUF_SIZE, "CHALLENGE_ACCEPTED %s\n%s", clients[challenged_idx].name, board_str);
                      write_client(clients[challenger_idx].sock, acceptance_msg);
 
                      char confirmation_msg[BUF_SIZE];
-                     snprintf(confirmation_msg, BUF_SIZE, "You have accepted the challenge from %s.", clients[challenger_idx].name);
+                     snprintf(confirmation_msg, BUF_SIZE, "You have accepted the challenge from %s.\n%s", clients[challenger_idx].name, board_str);
                      write_client(clients[challenged_idx].sock, confirmation_msg);
 
                      char msg[BUF_SIZE];
                      snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_INGAME);
                      write_client(clients[challenger_idx].sock, msg);
                      write_client(clients[challenged_idx].sock, msg);
+
+                     free(board_str);
+                     delete_the_board(b);
+                     delete_the_game(g);
+                  }
+               }
+               else if (clients[i].state == STATE_INGAME) {
+                  if (buffer[0] != '/') {
+                     char final_msg[BUF_SIZE];
+                     snprintf(final_msg, BUF_SIZE, "%s: %s", client.name, buffer);
+                     write_client(clients[clients[i].opponent].sock, final_msg);
                   }
                }
                else if (strncmp(buffer, "/refuse", 7) == 0) {
@@ -385,6 +402,42 @@ static void server_app(void)
                   } else {
                      write_client(clients[i].sock, "Usage: /addfriend <username>");
                   }
+               }
+               else if (strncmp(buffer, "/chatAll", 8) == 0) {
+                  char *msg = buffer + 9;
+                  char final_msg[BUF_SIZE];
+                  snprintf(final_msg, BUF_SIZE, "%s: %s", client.name, msg);
+                  for (int j = 0; j < actual; j++) {
+                     if (clients[j].state == STATE_LOBBY && i != j) {
+                        write_client(clients[j].sock, final_msg);
+                     }
+                  }
+               }
+               else if (strncmp(buffer, "/chat", 5) == 0) {
+                  char *recipient_name = strtok(buffer + 6, " ");
+                  char *msg = strtok(NULL, "");
+                  if (recipient_name && msg) {
+                     int recipient_idx = -1;
+                     for (int j = 0; j < actual; j++) {
+                        if (strcmp(clients[j].name, recipient_name) == 0) {
+                           recipient_idx = j;
+                           break;
+                        }
+                     }
+                     if (recipient_idx != -1) {
+                        char final_msg[BUF_SIZE];
+                        snprintf(final_msg, BUF_SIZE, "(private) %s: %s", client.name, msg);
+                        write_client(clients[recipient_idx].sock, final_msg);
+                     } else {
+                        write_client(client.sock, "Player not found");
+                     }
+                  }
+               }
+               else if (strcmp(buffer, "/bio") == 0) {
+                  clients[i].state = STATE_BIO;
+                  char msg[BUF_SIZE];
+                  snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_BIO);
+                  write_client(clients[i].sock, msg);
                }
                else if (clients[i].state == STATE_BIO) {
                   if (strcmp(buffer, "/endbio") == 0) {

@@ -80,7 +80,11 @@ static void app(const char *address, const char *name)
       if(FD_ISSET(STDIN_FILENO, &rdfs))
       {
          ui_get_input(buffer, BUF_SIZE);
-         write_server(sock, buffer);
+         if (strcmp(buffer, "/clearchat") == 0) {
+            ui_clear_chat();
+         } else {
+            write_server(sock, buffer);
+         }
       }
 
       if(FD_ISSET(sock, &rdfs))
