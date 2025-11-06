@@ -2,6 +2,8 @@
 #define CLIENT_H
 
 
+#include "common.h"
+
 #include <sys/types.h>
 
 #ifdef _WIN32

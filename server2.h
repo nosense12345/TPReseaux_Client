@@ -29,12 +29,7 @@ typedef struct in_addr IN_ADDR;
 
 #define MAX_FRIENDS 10
 
-typedef enum
-{
-   STATE_LOBBY,
-   STATE_CHALLENGED,
-   STATE_INGAME
-} ClientState;
+#include "common.h"
 
 typedef struct
 {

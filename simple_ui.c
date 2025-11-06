@@ -23,13 +23,13 @@ void ui_clear_screen(void) {
 #endif
 }
 
-void ui_draw_board(const char *board_display) {
+void ui_draw_board(const char *board_display, ClientState currentState) {
     strncpy(current_board_display, board_display, sizeof(current_board_display) - 1);
     current_board_display[sizeof(current_board_display) - 1] = '\0';
-    ui_redraw_all();
+    ui_redraw_all(currentState);
 }
 
-void ui_add_message(const char *message) {
+void ui_add_message(const char *message, ClientState currentState) {
     if (message_count < MAX_CHAT_MESSAGES) {
         strncpy(chat_messages[message_count], message, MAX_MESSAGE_LENGTH - 1);
         chat_messages[message_count][MAX_MESSAGE_LENGTH - 1] = '\0';
@@ -43,7 +43,7 @@ void ui_add_message(const char *message) {
         strncpy(chat_messages[MAX_CHAT_MESSAGES - 1], message, MAX_MESSAGE_LENGTH - 1);
         chat_messages[MAX_CHAT_MESSAGES - 1][MAX_MESSAGE_LENGTH - 1] = '\0';
     }
-    ui_redraw_all();
+    ui_redraw_all(currentState);
 }
 
 void ui_get_input(char *buffer, int size) {
@@ -53,7 +53,7 @@ void ui_get_input(char *buffer, int size) {
     buffer[strcspn(buffer, "\n")] = 0;
 }
 
-void ui_redraw_all(void) {
+void ui_redraw_all(ClientState currentState) {
     ui_clear_screen();
 
     // Board Box
@@ -67,6 +67,23 @@ void ui_redraw_all(void) {
     printf("========================================\n");
     printf("|                 CHAT                 |\n");
     printf("========================================\n");
+
+    switch (currentState) {
+        case STATE_LOBBY:
+            printf("Available commands: /list, /bio, /viewbio [user], /challenge [user], /addfriend [user], /removefriend [user], /friends, /clearchat\n");
+            break;
+        case STATE_BIO:
+            printf("Available commands: /endbio, /clearbio\n");
+            break;
+        case STATE_CHALLENGED:
+            printf("Available commands: /accept [challenger], /refuse [challenger]\n");
+            break;
+        case STATE_INGAME:
+            printf("Available commands: /move [pit], /quitgame\n");
+            break;
+    }
+    printf("----------------------------------------\n");
+
     for (int i = 0; i < message_count; i++) {
         printf("%s\n", chat_messages[i]);
     }
@@ -77,4 +94,9 @@ void ui_redraw_all(void) {
     printf("|                INPUT                 |\n");
     printf("========================================\n");
     // Input prompt is handled by ui_get_input
+}
+
+void ui_clear_chat(void) {
+    message_count = 0;
+    ui_redraw_all(STATE_LOBBY); // Redraw with default state
 }

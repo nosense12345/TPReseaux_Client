@@ -188,9 +188,13 @@ static void server_app(void)
                   }
 
                   if(challenged_idx != -1) {
+                     clients[challenged_idx].state = STATE_CHALLENGED;
                      char challenge_msg[BUF_SIZE];
                      snprintf(challenge_msg, BUF_SIZE, "CHALLENGE_FROM %s", clients[challenger_idx].name);
                      write_client(clients[challenged_idx].sock, challenge_msg);
+                     char msg[BUF_SIZE];
+                     snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_CHALLENGED);
+                     write_client(clients[challenged_idx].sock, msg);
                   } else {
                      write_client(client.sock, "Player not found");
                   }
@@ -216,6 +220,11 @@ static void server_app(void)
                   }
 
                   if(challenger_idx != -1) {
+                     clients[challenger_idx].state = STATE_INGAME;
+                     clients[challenged_idx].state = STATE_INGAME;
+                     clients[challenger_idx].opponent = challenged_idx;
+                     clients[challenged_idx].opponent = challenger_idx;
+
                      char acceptance_msg[BUF_SIZE];
                      snprintf(acceptance_msg, BUF_SIZE, "CHALLENGE_ACCEPTED %s", clients[challenged_idx].name);
                      write_client(clients[challenger_idx].sock, acceptance_msg);
@@ -223,6 +232,11 @@ static void server_app(void)
                      char confirmation_msg[BUF_SIZE];
                      snprintf(confirmation_msg, BUF_SIZE, "You have accepted the challenge from %s.", clients[challenger_idx].name);
                      write_client(clients[challenged_idx].sock, confirmation_msg);
+
+                     char msg[BUF_SIZE];
+                     snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_INGAME);
+                     write_client(clients[challenger_idx].sock, msg);
+                     write_client(clients[challenged_idx].sock, msg);
                   }
                }
                else if (strncmp(buffer, "/refuse", 7) == 0) {
@@ -237,7 +251,16 @@ static void server_app(void)
                      }
                   }
 
+                  int challenged_idx = -1;
+                  for(int j=0; j<actual; j++) {
+                     if(clients[j].sock == client.sock) {
+                        challenged_idx = j;
+                        break;
+                     }
+                  }
+
                   if(challenger_idx != -1) {
+                     clients[challenged_idx].state = STATE_LOBBY;
                      char refusal_msg[BUF_SIZE];
                      snprintf(refusal_msg, BUF_SIZE, "CHALLENGE_REFUSED %s", client.name);
                      write_client(clients[challenger_idx].sock, refusal_msg);
@@ -245,6 +268,10 @@ static void server_app(void)
                      char confirmation_msg[BUF_SIZE];
                      snprintf(confirmation_msg, BUF_SIZE, "You have refused the challenge from %s.", clients[challenger_idx].name);
                      write_client(client.sock, confirmation_msg);
+
+                     char msg[BUF_SIZE];
+                     snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_LOBBY);
+                     write_client(clients[challenged_idx].sock, msg);
                   }
                }
                else if (strncmp(buffer, "/viewbio", 8) == 0) {
@@ -359,24 +386,26 @@ static void server_app(void)
                      write_client(clients[i].sock, "Usage: /addfriend <username>");
                   }
                }
-               else if (strcmp(buffer, "/clearbio") == 0) {
-                  for (int j = 0; j < BIO_MAX_LINES; j++) {
-                     clients[i].bio[j][0] = '\0';
-                  }
-                  write_client(clients[i].sock, "Your bio has been cleared.");
-               }
-               else if (strncmp(buffer, "/bio", 4) == 0) {
-                  char *bio_line = buffer + 5;
-                  for (int j = 0; j < BIO_MAX_LINES; j++) {
-                     if (clients[i].bio[j][0] == '\0') {
-                        strncpy(clients[i].bio[j], bio_line, BIO_MAX_LENGTH - 1);
-                        clients[i].bio[j][BIO_MAX_LENGTH - 1] = '\0';
-                        break;
+               else if (clients[i].state == STATE_BIO) {
+                  if (strcmp(buffer, "/endbio") == 0) {
+                     clients[i].state = STATE_LOBBY;
+                     char msg[BUF_SIZE];
+                     snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_LOBBY);
+                     write_client(clients[i].sock, msg);
+                  } else if (strcmp(buffer, "/clearbio") == 0) {
+                     for (int j = 0; j < BIO_MAX_LINES; j++) {
+                        clients[i].bio[j][0] = '\0';
+                     }
+                     write_client(clients[i].sock, "Your bio has been cleared.");
+                  } else {
+                     for (int j = 0; j < BIO_MAX_LINES; j++) {
+                        if (clients[i].bio[j][0] == '\0') {
+                           strncpy(clients[i].bio[j], buffer, BIO_MAX_LENGTH - 1);
+                           clients[i].bio[j][BIO_MAX_LENGTH - 1] = '\0';
+                           break;
+                        }
                      }
                   }
-               }
-               else if (strcmp(buffer, "/endbio") == 0) {
-                  write_client(clients[i].sock, "Your bio has been updated.");
                }
                else
                {
