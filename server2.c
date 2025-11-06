@@ -227,26 +227,18 @@ static void server_app(void)
                      clients[challenger_idx].opponent = challenged_idx;
                      clients[challenged_idx].opponent = challenger_idx;
 
-                     struct game* g = create_game(&clients[challenger_idx], &clients[challenged_idx], PUBLIC);
-                     struct board* b = create_board(g);
-                     char* board_str = convert_board_to_string(b);
-
                      char acceptance_msg[BUF_SIZE];
-                     snprintf(acceptance_msg, BUF_SIZE, "CHALLENGE_ACCEPTED %s\n%s", clients[challenged_idx].name, board_str);
+                     snprintf(acceptance_msg, BUF_SIZE, "CHALLENGE_ACCEPTED %s. You are now playing with %s.", clients[challenged_idx].name, clients[challenger_idx].name);
                      write_client(clients[challenger_idx].sock, acceptance_msg);
 
                      char confirmation_msg[BUF_SIZE];
-                     snprintf(confirmation_msg, BUF_SIZE, "You have accepted the challenge from %s.\n%s", clients[challenger_idx].name, board_str);
+                     snprintf(confirmation_msg, BUF_SIZE, "You have accepted the challenge from %s. You are now playing with %s.", clients[challenger_idx].name, clients[challenged_idx].name);
                      write_client(clients[challenged_idx].sock, confirmation_msg);
 
                      char msg[BUF_SIZE];
                      snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_INGAME);
                      write_client(clients[challenger_idx].sock, msg);
                      write_client(clients[challenged_idx].sock, msg);
-
-                     free(board_str);
-                     delete_the_board(b);
-                     delete_the_game(g);
                   }
                }
                else if (clients[i].state == STATE_INGAME) {

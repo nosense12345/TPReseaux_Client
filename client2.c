@@ -96,12 +96,16 @@ static void app(const char *address, const char *name)
             break;
          }
 
-         if (strncmp(buffer, "STATE_UPDATE", 12) == 0) {
-            int new_state;
-            sscanf(buffer, "STATE_UPDATE %d", &new_state);
-            currentState = (ClientState)new_state;
-         } else {
-            ui_add_message(buffer, currentState);
+         char *line = strtok(buffer, "\n");
+         while (line != NULL) {
+            if (strncmp(line, "STATE_UPDATE", 12) == 0) {
+               int new_state;
+               sscanf(line, "STATE_UPDATE %d", &new_state);
+               currentState = (ClientState)new_state;
+            } else {
+               ui_add_message(line, currentState);
+            }
+            line = strtok(NULL, "\n");
          }
       }
    }
