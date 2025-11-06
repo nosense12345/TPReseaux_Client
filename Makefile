@@ -7,7 +7,7 @@ TEST_EXEC = test
 CC = gcc
 
 # Compilation flags
-CFLAGS = -Wall -Wextra -std=c11
+CFLAGS = -Wall -Wextra -std=c11 -g
 
 # Source files
 CLIENT_SRCS = client2.c simple_ui.c
