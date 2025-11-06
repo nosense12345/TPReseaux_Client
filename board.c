@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include "board.h"
 
 struct board* create_board(struct game* g)
@@ -39,15 +40,20 @@ int delete_the_board(struct board* b)
 char* convert_board_to_string(struct board* b)
 {
     if (b == NULL) return NULL;
-    char* listeSpaces[] = {"", "", "", "", "", "", "", "", "", "", "", ""};
+    char* listeSpaces[12];
+    for (int i = 0; i < 12; i++) {
+        listeSpaces[i] = malloc(100 * sizeof(char)); // Allocate memory for each string
+        strcpy(listeSpaces[i], ""); // Initialize with empty string
+    }
+
     for (int i = 0; i < 12; i++) {
         for (int j = 0; j < b->stateHoles[i]; j++) {
             strcat(listeSpaces[i], " ");
         }
     }
 
-    char* boardString = malloc(1000 * sizeof(char));
-    snprintf(boardString, 1000,
+    char* boardString = malloc(2048 * sizeof(char));
+    snprintf(boardString, 2048,
         "Score %s: %d | Score %s: %d\n"
         "Current Player: %s\n"
         "Board:\n"
@@ -64,5 +70,10 @@ char* convert_board_to_string(struct board* b)
         b->stateHoles[0], b->stateHoles[1], b->stateHoles[2], b->stateHoles[3], b->stateHoles[4], b->stateHoles[5],
         listeSpaces[0], listeSpaces[1], listeSpaces[2], listeSpaces[3], listeSpaces[4]
     );
+
+    for (int i = 0; i < 12; i++) {
+        free(listeSpaces[i]); // Free the allocated memory
+    }
+
     return boardString;
 }

@@ -51,6 +51,8 @@ struct chat* create_chat();
 struct chat* delete_the_chat(struct chat* c);
 
 // Function declarations
+struct board;
+
 struct game* create_game(Client* player1, Client* player2, enum mode gameMode);
 int delete_the_game(struct game* g);
 int try_a_move(struct game* g, int move, struct board* b);
