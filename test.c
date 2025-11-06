@@ -10,7 +10,40 @@ int main()
     Client player2 = { .sock = 42, .name = "Spongebob" };
     struct game* g = create_game(&player1, &player2, PUBLIC);
     struct board* b = create_board(g);
-    ui_draw_board(convert_board_to_string(b), STATE_LOBBY);
+    ui_init();
+    ui_clear_screen();
+    ui_draw_board(convert_board_to_string(b));
+    ui_redraw_all(STATE_INGAME);
+    int turn = 0;
+    while(1) {
+        char input[100];
+        ui_get_input(input, sizeof(input));
+        if (input[0] == 'q') {
+            break;
+        } else if (input[0] == 'p') {
+            printf("Current board state:\n%s\n", convert_board_to_string(b));
+        } else{
+            int res;
+            ui_clear_chat();
+            if (turn == 0) {
+                ui_add_message("Patrick's turn");
+                res = try_a_move(g, input[0], b, &player1);
+                turn = 1;
+            } else {
+                ui_add_message("Spongebob's turn");
+                res = try_a_move(g, input[0], b, &player2);
+                turn = 0;
+            }
+            ui_cleanup();
+            ui_draw_board(convert_board_to_string(b));
+            ui_add_message("Return code:");
+            char err_msg[50];
+            snprintf(err_msg, sizeof(err_msg), "%d", res);
+            ui_add_message(err_msg);
+            ui_redraw_all(STATE_INGAME);
+        }
+    }
+
     //printf("Hello, World!\n");
     return 0;
 }

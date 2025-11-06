@@ -20,17 +20,17 @@ enum mode
 struct chat;
 //struct Client;
 
-struct listeChainee
+struct listeChaineeMove
 {
     int move;
-    struct listeChainee* next;
+    struct listeChaineeMove* next;
 };
 
-struct log
+struct logMove
 {
     int nbMoves;
-    struct listeChainee* head;
-    struct listeChainee* tail;
+    struct listeChaineeMove* head;
+    struct listeChaineeMove* tail;
 
 };
 
@@ -40,7 +40,7 @@ struct game
     Client* player2;
     int scoreP1;
     int scoreP2;
-    struct log* logGame;
+    struct logMove* logGame;
     enum state gameState;
     enum mode gameMode;
     struct chat* gameChat;
@@ -55,7 +55,7 @@ struct board;
 
 struct game* create_game(Client* player1, Client* player2, enum mode gameMode);
 int delete_the_game(struct game* g);
-int try_a_move(struct game* g, int move, struct board* b);
+int try_a_move(struct game* g, char moveChar, struct board* b, Client* currentPlayer);
 int test_a_move(int move, struct board* b);
 int play_a_move(struct game* g, int move, struct board* b);
 int end_the_game(struct game* g);
