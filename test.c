@@ -10,7 +10,7 @@ int main()
     Client player2 = { .sock = 42, .name = "Spongebob" };
     struct game* g = create_game(&player1, &player2, PUBLIC);
     struct board* b = create_board(g);
-    ui_draw_board(convert_board_to_string(b));
+    ui_draw_board(convert_board_to_string(b), STATE_LOBBY);
     //printf("Hello, World!\n");
     return 0;
 }
