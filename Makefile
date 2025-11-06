@@ -9,7 +9,7 @@ CC = gcc
 CFLAGS = -Wall -Wextra -std=c11
 
 # Source files
-CLIENT_SRCS = client2.c
+CLIENT_SRCS = client2.c simple_ui.c
 SERVER_SRCS = server2.c
 
 # Object files

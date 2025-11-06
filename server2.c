@@ -219,12 +219,15 @@ static void server_app(void)
                      char acceptance_msg[BUF_SIZE];
                      snprintf(acceptance_msg, BUF_SIZE, "CHALLENGE_ACCEPTED %s", clients[challenged_idx].name);
                      write_client(clients[challenger_idx].sock, acceptance_msg);
-                     write_client(clients[challenged_idx].sock, "You have accepted the challenge.");
+
+                     char confirmation_msg[BUF_SIZE];
+                     snprintf(confirmation_msg, BUF_SIZE, "You have accepted the challenge from %s.", clients[challenger_idx].name);
+                     write_client(clients[challenged_idx].sock, confirmation_msg);
                   }
                }
                else if (strncmp(buffer, "/refuse", 7) == 0) {
                   char challenger_name[BUF_SIZE];
-                  sscanf(buffer, "REFUSE %s", challenger_name);
+                  sscanf(buffer, "/refuse %s", challenger_name);
 
                   int challenger_idx = -1;
                   for(int j=0; j<actual; j++) {
@@ -238,7 +241,10 @@ static void server_app(void)
                      char refusal_msg[BUF_SIZE];
                      snprintf(refusal_msg, BUF_SIZE, "CHALLENGE_REFUSED %s", client.name);
                      write_client(clients[challenger_idx].sock, refusal_msg);
-                     write_client(client.sock, "You have refused the challenge.");
+
+                     char confirmation_msg[BUF_SIZE];
+                     snprintf(confirmation_msg, BUF_SIZE, "You have refused the challenge from %s.", clients[challenger_idx].name);
+                     write_client(client.sock, confirmation_msg);
                   }
                }
                else if (strncmp(buffer, "/viewbio", 8) == 0) {
@@ -253,14 +259,15 @@ static void server_app(void)
                      }
 
                      if (user_idx != -1) {
-                        char bio_response[BUF_SIZE] = "";
+                        char bio_response[BUF_SIZE];
+                        snprintf(bio_response, BUF_SIZE, "Bio for user %s:\n", clients[user_idx].name);
                         for (int j = 0; j < BIO_MAX_LINES; j++) {
                            if (clients[user_idx].bio[j][0] != '\0') {
                               strncat(bio_response, clients[user_idx].bio[j], BUF_SIZE - strlen(bio_response) - 1);
                               strncat(bio_response, "\n", BUF_SIZE - strlen(bio_response) - 1);
                            }
                         }
-                        if (strlen(bio_response) == 0) {
+                        if (strlen(bio_response) == (strlen(clients[user_idx].name) + 15)) { // only the header
                            write_client(clients[i].sock, "This user has no bio.");
                         } else {
                            write_client(clients[i].sock, bio_response);
