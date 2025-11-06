@@ -103,7 +103,7 @@ static void app(const char *address, const char *name)
                write_server(sock, bio_command);
             }
          } else if (strcmp(buffer, "/list") == 0) {
-            write_server(sock, "LIST");
+            write_server(sock, "/list");
          }
          else if (strncmp(buffer, "/addfriend", 10) == 0) {
             char command[BUF_SIZE];
@@ -149,7 +149,7 @@ static void app(const char *address, const char *name)
             char command[BUF_SIZE];
             char challenged_name[BUF_SIZE];
             if(sscanf(buffer, "%s %s", command, challenged_name) == 2){
-               snprintf(command, BUF_SIZE, "CHALLENGE %s", challenged_name);
+               snprintf(command, BUF_SIZE, "/challenge %s", challenged_name);
                write_server(sock, command);
             } else {
                printf("Usage: /challenge <username>\n");
@@ -159,7 +159,7 @@ static void app(const char *address, const char *name)
             char command[BUF_SIZE];
             char challenger_name[BUF_SIZE];
             if(sscanf(buffer, "%s %s", command, challenger_name) == 2){
-               snprintf(command, BUF_SIZE, "ACCEPT %s", challenger_name);
+               snprintf(command, BUF_SIZE, "/accept %s", challenger_name);
                write_server(sock, command);
             }
          }
@@ -167,7 +167,7 @@ static void app(const char *address, const char *name)
             char command[BUF_SIZE];
             char challenger_name[BUF_SIZE];
             if(sscanf(buffer, "%s %s", command, challenger_name) == 2){
-               snprintf(command, BUF_SIZE, "REFUSE %s", challenger_name);
+               snprintf(command, BUF_SIZE, "/refuse %s", challenger_name);
                write_server(sock, command);
             }
          } else {

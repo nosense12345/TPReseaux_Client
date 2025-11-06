@@ -159,7 +159,7 @@ static void server_app(void)
                      }
                   }
                }
-               else if (strcmp(buffer, "LIST") == 0) {
+               else if (strcmp(buffer, "/list") == 0) {
                   char user_list[BUF_SIZE] = "Online users:\n";
                   for (int j = 0; j < actual; j++) {
                      strncat(user_list, clients[j].name, BUF_SIZE - strlen(user_list) - 1);
@@ -167,7 +167,7 @@ static void server_app(void)
                   }
                   write_client(clients[i].sock, user_list);
                }
-               else if (strncmp(buffer, "CHALLENGE", 9) == 0) {
+               else if (strncmp(buffer, "/challenge", 10) == 0) {
                   char challenged_name[BUF_SIZE];
                   sscanf(buffer, "CHALLENGE %s", challenged_name);
 
@@ -195,7 +195,7 @@ static void server_app(void)
                      write_client(client.sock, "Player not found");
                   }
                }
-               else if (strncmp(buffer, "ACCEPT", 6) == 0) {
+               else if (strncmp(buffer, "/accept", 7) == 0) {
                   char challenger_name[BUF_SIZE];
                   sscanf(buffer, "ACCEPT %s", challenger_name);
 
@@ -222,7 +222,7 @@ static void server_app(void)
                      write_client(clients[challenged_idx].sock, "You have accepted the challenge.");
                   }
                }
-               else if (strncmp(buffer, "REFUSE", 6) == 0) {
+               else if (strncmp(buffer, "/refuse", 7) == 0) {
                   char challenger_name[BUF_SIZE];
                   sscanf(buffer, "REFUSE %s", challenger_name);
 
@@ -402,7 +402,7 @@ static void remove_client(Client *clients, int to_remove, int *actual)
    (*actual)--;
 }
 
-static void send_message(Client *clients, int sender_idx, int actual, const char *buffer, char from_server)
+void send_message(Client *clients, int sender_idx, int actual, const char *buffer, char from_server)
 {
    int i = 0;
    char message[BUF_SIZE];
