@@ -39,6 +39,8 @@ typedef struct in_addr IN_ADDR;
 
 #include "common.h"
 
+struct game;
+
 typedef struct
 {
    SOCKET sock;
@@ -48,6 +50,7 @@ typedef struct
    ClientState state;
    int opponent;
    int challenging_who;
+   struct game* Currentgame;
 } Client;
 
 
