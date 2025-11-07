@@ -50,7 +50,7 @@ typedef struct
    ClientState state;
    int opponent;
    int challenging_who;
-   struct game* Currentgame;
+   struct board* Currentboard;
 } Client;
 
 

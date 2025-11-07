@@ -263,6 +263,7 @@ static void server_app(void)
                               write_client(clients[challenger_idx].sock, "CLEAR_CHAT");
                               snprintf(msg, BUF_SIZE, "You have challenged %s.", clients[challenged_idx].name);
                               write_client(clients[challenger_idx].sock, msg);
+                              
                            }
                         } else {
                            write_client(clients[i].sock, "Player not found");
@@ -479,13 +480,24 @@ static void server_app(void)
                            write_client(clients[challenger_idx].sock, acceptance_msg);
 
                            char confirmation_msg[BUF_SIZE];
-                           snprintf(confirmation_msg, BUF_SIZE, "You have accepted the challenge from %s. You are now playing with %s.", clients[challenger_idx].name, clients[i].name);
+                           snprintf(confirmation_msg, BUF_SIZE, "You have accepted the challenge from %s. You are now playing with %s.", clients[challenger_idx].name, clients[challenger_idx].name);
                            write_client(clients[i].sock, confirmation_msg);
 
                            char msg[BUF_SIZE];
                            snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_INGAME);
                            write_client(clients[challenger_idx].sock, msg);
                            write_client(clients[i].sock, msg);
+
+                           
+                           struct game* g = create_game(&clients[i], &clients[challenger_idx], PUBLIC);
+                           struct board* b = create_board(g);
+                           clients[i].Currentboard = b;
+                           clients[challenger_idx].Currentboard = b;
+                           snprintf(msg, BUF_SIZE, "CHANGE_BOARD%s", convert_board_to_string(b));
+                           write_client(clients[challenger_idx].sock, msg);
+                           write_client(clients[i].sock, msg);
+
+
                         } else {
                            write_client(clients[i].sock, "Invalid challenger or challenge not found.");
                         }
@@ -551,8 +563,31 @@ static void server_app(void)
                         write_client(clients[opponent_idx].sock, msg);
                      }
                   } else if (strncmp(buffer, "/move", 5) == 0) {
-                     // TODO: Implement game move logic here
-                     write_client(clients[i].sock, "Move command received. (Not yet implemented)");
+                     char move_letter[BUF_SIZE];
+                     if (sscanf(buffer, "/move %s", move_letter) == 1) {
+                        Client* client1 = &clients[i];
+                        Client* client2;
+                        if (client1 == client1->Currentboard->gameRef->player1) {
+                           client2 = client1->Currentboard->gameRef->player2;
+                        } else {
+                           client2 = client1->Currentboard->gameRef->player1;
+                        }
+                        int res = try_a_move(client1->Currentboard->gameRef, move_letter[0], client1->Currentboard, client1);
+                        if (res == -1) {
+                           char err_msg[50];
+                           snprintf(err_msg, sizeof(err_msg), "%d", res);
+                           snprintf(err_msg, sizeof(err_msg), "Invalid move code: %d", res);
+                           write_client(client1->sock, err_msg);
+                           return;
+                        }
+                        char msg[BUF_SIZE];
+                        snprintf(msg, BUF_SIZE, "CHANGE_BOARD%s", convert_board_to_string(client1->Currentboard));
+                        write_client(client1->sock, msg);
+                        write_client(client2->sock, msg);
+                     }
+                        
+                        
+                     
                   } else if (buffer[0] != '/') {
                      char final_msg[BUF_SIZE];
                      snprintf(final_msg, BUF_SIZE, "%s: %s", clients[i].name, buffer);
@@ -621,6 +656,13 @@ static int server_init_connection(void)
    if(sock == INVALID_SOCKET)
    {
       perror("socket()");
+      exit(errno);
+   }
+
+   int reuse = 1;
+   if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < -0)
+   {
+      perror("setsockopt()");
       exit(errno);
    }
 

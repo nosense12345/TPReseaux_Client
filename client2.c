@@ -110,8 +110,8 @@ static void app(const char *address, const char *name)
                ui_clear_chat();
             }
             else if (strcmp(line, "CHANGE_BOARD") == 0) { // New: Handle CHANGE_BOARD message
-               char * new_board;
-               sscanf(line, "CHANGE_BOARD %s", &new_board);
+               char * new_board = malloc(4048 * sizeof(char));
+               sscanf(line, "CHANGE_BOARD %s", new_board);
                ui_draw_board(new_board);
             }
             else {
