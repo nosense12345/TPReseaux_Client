@@ -550,12 +550,15 @@ static void server_app(void)
                         snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_LOBBY);
                         write_client(clients[opponent_idx].sock, msg);
                      }
+                  } else if (strncmp(buffer, "/move", 5) == 0) {
+                     // TODO: Implement game move logic here
+                     write_client(clients[i].sock, "Move command received. (Not yet implemented)");
                   } else if (buffer[0] != '/') {
                      char final_msg[BUF_SIZE];
                      snprintf(final_msg, BUF_SIZE, "%s: %s", clients[i].name, buffer);
                      write_client(clients[clients[i].opponent].sock, final_msg);
                   } else {
-                     write_client(clients[i].sock, "You are in a game. Only /quitgame or in-game moves are available.");
+                     write_client(clients[i].sock, "You are in a game. Only /quitgame, /move <pit_number> or in-game chat are available.");
                   }
                } else if (clients[i].state == STATE_BIO) {
                   if (strcmp(buffer, "/endbio") == 0) {

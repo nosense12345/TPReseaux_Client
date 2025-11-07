@@ -82,7 +82,10 @@ static void app(const char *address, const char *name)
          ui_get_input(buffer, BUF_SIZE);
          if (strcmp(buffer, "/clearchat") == 0) {
             ui_clear_chat();
-         } else {
+         } else if (strncmp(buffer, "/move", 5) == 0) {
+            write_server(sock, buffer);
+         }
+         else {
             write_server(sock, buffer);
          }
       }
