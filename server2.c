@@ -581,7 +581,7 @@ static void server_app(void)
                            return;
                         }
                         char msg[BUF_SIZE];
-                        snprintf(msg, BUF_SIZE, "CHANGE_BOARD%s", convert_board_to_string(client1->Currentboard));
+                        snprintf(msg, BUF_SIZE, "CHANGE_BOARD %s", convert_board_to_string(client1->Currentboard));
                         write_client(client1->sock, msg);
                         write_client(client2->sock, msg);
                      }
