@@ -7,7 +7,8 @@ typedef enum
    STATE_BIO,
    STATE_CHALLENGED,
    STATE_CHALLENGING,
-   STATE_INGAME
+   STATE_INGAME,
+   STATE_SPECTATE
 } ClientState;
 
 #endif /* COMMON_H */

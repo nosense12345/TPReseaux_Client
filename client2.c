@@ -48,9 +48,19 @@ static void end(void)
 #endif
 }
 
+#include <signal.h>
+
+SOCKET sock;
+
+void handle_sigint(int sig) {
+    (void)sig;
+    write_server(sock, "/quit");
+    exit(0);
+}
+
 static void app(const char *address, const char *name)
 {
-   SOCKET sock = init_connection(address);
+   sock = init_connection(address);
    char buffer[BUF_SIZE];
 
    ClientState currentState = STATE_LOBBY;
@@ -58,9 +68,9 @@ static void app(const char *address, const char *name)
    ui_init();
 
    /* send our name */
-   char register_command[BUF_SIZE];
-   snprintf(register_command, BUF_SIZE, "REGISTER %s", name);
-   write_server(sock, register_command);
+   char registration_command[BUF_SIZE];
+   snprintf(registration_command, BUF_SIZE, "REGISTER %s", name);
+   write_server(sock, registration_command);
 
    while(1)
    {
@@ -129,7 +139,7 @@ static void app(const char *address, const char *name)
 
 static int init_connection(const char *address)
 {
-   SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
+   sock = socket(AF_INET, SOCK_STREAM, 0);
    SOCKADDR_IN sin = { 0 };
    struct hostent *hostinfo;
 
@@ -195,6 +205,8 @@ int main(int argc, char **argv)
       printf("Usage : %s [address] [pseudo]\n", argv[0]);
       return EXIT_FAILURE;
    }
+
+   signal(SIGINT, handle_sigint);
 
    init();
 

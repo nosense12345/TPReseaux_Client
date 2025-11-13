@@ -6,12 +6,13 @@
 #include "server2.h"
 #include "game.h"
 #include "board.h"
+#include "player.h"
 #include <sys/select.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 
-static void init(void)
+void init(void)
 {
 #ifdef WIN32
    WSADATA wsa;
@@ -24,17 +25,24 @@ static void init(void)
 #endif
 }
 
-static void end(void)
+void end(void)
 {
 #ifdef WIN32
    WSACleanup();
 #endif
 }
 
-static void server_app(void)
+void server_app(void)
 {
    SOCKET sock = server_init_connection();
    char buffer[BUF_SIZE];
+   char msg[BUF_SIZE * 2];
+   char challenge_msg[BUF_SIZE * 2];
+   char bio_response[BUF_SIZE * 2];
+   char final_msg[BUF_SIZE * 2];
+   char acceptance_msg[BUF_SIZE * 2];
+   char confirmation_msg[BUF_SIZE * 2];
+   char refusal_msg[BUF_SIZE * 2];
    /* the index for the array */
    int actual = 0;
    int max = sock;
@@ -96,42 +104,32 @@ static void server_app(void)
          char username[BUF_SIZE];
          if (sscanf(buffer, "%s %s", command, username) == 2 && strcmp(command, "REGISTER") == 0)
          {
-            int username_taken = 0;
-            for (int i = 0; i < actual; i++)
-            {
-               if (strcmp(clients[i].name, username) == 0)
-               {
-                  username_taken = 1;
-                  break;
-               }
-            }
+            Client c = { csock, "", {{0}}, {{0}}, 0, STATE_LOBBY, -1, -1, NULL };
+            strncpy(c.name, username, BUF_SIZE - 1);
 
-            if (username_taken)
-            {
-               write_client(csock, "Username is already taken\n");
-               closesocket(csock);
-            }
-            else
-            {
-               /* what is the new maximum fd ? */
-               max = csock > max ? csock : max;
-               FD_SET(csock, &rdfs);
-
-               Client c = { .sock = csock, .name = "" };
-               strncpy(c.name, username, BUF_SIZE - 1);
+            if (load_player_data(&c)) {
+               write_client(csock, "Welcome back!");
+            } else {
                for (int j = 0; j < BIO_MAX_LINES; j++) {
                   c.bio[j][0] = '\0';
                }
                for (int j = 0; j < MAX_FRIENDS; j++) {
-                  c.friends[j] = -1;
+                  c.friends[j][0] = '\0';
                }
                c.state = STATE_LOBBY;
                c.opponent = -1;
                c.challenging_who = -1;
-               clients[actual] = c;
-               actual++;
-               write_client(csock, "Welcome! You are registered.\n");
+               c.num_friends = 0;
+               save_player_data(&c);
+               write_client(csock, "Welcome! You are registered.");
             }
+
+            /* what is the new maximum fd ? */
+            max = csock > max ? csock : max;
+            FD_SET(csock, &rdfs);
+
+            clients[actual] = c;
+            actual++;
          }
          else
          {
@@ -158,8 +156,7 @@ static void server_app(void)
                         clients[opponent_idx].state = STATE_LOBBY;
                         clients[opponent_idx].opponent = -1;
 
-                        char msg[BUF_SIZE];
-                        snprintf(msg, BUF_SIZE, "Your opponent %s has disconnected. You are back in the lobby.", clients[i].name);
+                        snprintf(msg, sizeof(msg), "Your opponent %s has disconnected. You are back in the lobby.", clients[i].name);
                         write_client(clients[opponent_idx].sock, msg);
 
                         snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_LOBBY);
@@ -168,9 +165,7 @@ static void server_app(void)
                   } else if (clients[i].state == STATE_CHALLENGING) {
                      int challenged_idx = clients[i].challenging_who;
                      if (challenged_idx != -1) {
-                        clients[challenged_idx].state = STATE_LOBBY;
-                        char msg[BUF_SIZE];
-                        snprintf(msg, BUF_SIZE, "The challenge from %s has been canceled.", clients[i].name);
+                        snprintf(msg, sizeof(msg), "The challenge from %s has been canceled.", clients[i].name);
                         write_client(clients[challenged_idx].sock, msg);
                         snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_LOBBY);
                         write_client(clients[challenged_idx].sock, msg);
@@ -181,8 +176,7 @@ static void server_app(void)
                         if (clients[j].challenging_who == i) {
                            clients[j].state = STATE_LOBBY;
                            clients[j].challenging_who = -1;
-                           char msg[BUF_SIZE];
-                           snprintf(msg, BUF_SIZE, "%s is no longer available for a challenge.", clients[i].name);
+                           snprintf(msg, sizeof(msg), "%s is no longer available for a challenge.", clients[i].name);
                            write_client(clients[j].sock, msg);
                            snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_LOBBY);
                            write_client(clients[j].sock, msg);
@@ -192,6 +186,7 @@ static void server_app(void)
                   }
 
                   closesocket(clients[i].sock);
+                  save_player_data(&clients[i]);
                   int removed_index = i;
                   remove_client(clients, i, &actual);
 
@@ -249,8 +244,7 @@ static void server_app(void)
                               clients[challenger_idx].state = STATE_CHALLENGING;
                               clients[challenger_idx].challenging_who = challenged_idx;
 
-                              char challenge_msg[BUF_SIZE];
-                              snprintf(challenge_msg, BUF_SIZE, "CHALLENGE_FROM %s", clients[challenger_idx].name);
+                              snprintf(challenge_msg, sizeof(challenge_msg), "CHALLENGE_FROM %s", clients[challenger_idx].name);
                               write_client(clients[challenged_idx].sock, challenge_msg);
 
                               char msg[BUF_SIZE];
@@ -261,7 +255,7 @@ static void server_app(void)
                               write_client(clients[challenger_idx].sock, msg);
 
                               write_client(clients[challenger_idx].sock, "CLEAR_CHAT");
-                              snprintf(msg, BUF_SIZE, "You have challenged %s.", clients[challenged_idx].name);
+                              snprintf(msg, sizeof(msg), "You have challenged %s.", clients[challenged_idx].name);
                               write_client(clients[challenger_idx].sock, msg);
                               
                            }
@@ -288,8 +282,7 @@ static void server_app(void)
                         }
 
                         if (user_idx != -1) {
-                           char bio_response[BUF_SIZE];
-                           snprintf(bio_response, BUF_SIZE, "Bio for user %s:\n", clients[user_idx].name);
+                           snprintf(bio_response, sizeof(bio_response), "Bio for user %s:\n", clients[user_idx].name);
                            for (int j = 0; j < BIO_MAX_LINES; j++) {
                               if (clients[user_idx].bio[j][0] != '\0') {
                                  strncat(bio_response, clients[user_idx].bio[j], BUF_SIZE - strlen(bio_response) - 1);
@@ -310,12 +303,10 @@ static void server_app(void)
                   } else if (strcmp(buffer, "/friends") == 0) {
                      char friend_list[BUF_SIZE] = "Your friends:\n";
                      int friend_count = 0;
-                     for (int j = 0; j < MAX_FRIENDS; j++) {
-                        if (clients[i].friends[j] != -1) {
-                           strncat(friend_list, clients[clients[i].friends[j]].name, BUF_SIZE - strlen(friend_list) - 1);
-                           strncat(friend_list, "\n", BUF_SIZE - strlen(friend_list) - 1);
-                           friend_count++;
-                        }
+                     for (int j = 0; j < clients[i].num_friends; j++) {
+                        strncat(friend_list, clients[i].friends[j], BUF_SIZE - strlen(friend_list) - 1);
+                        strncat(friend_list, "\n", BUF_SIZE - strlen(friend_list) - 1);
+                        friend_count++;
                      }
                      if (friend_count == 0) {
                         write_client(clients[i].sock, "You have no friends.");
@@ -326,30 +317,24 @@ static void server_app(void)
                      char friend_name[BUF_SIZE];
                      if (sscanf(buffer, "/removefriend %s", friend_name) == 1) {
                         int friend_idx = -1;
-                        for (int j = 0; j < actual; j++) {
-                           if (strcmp(clients[j].name, friend_name) == 0) {
+                        for (int j = 0; j < clients[i].num_friends; j++) {
+                           if (strcmp(clients[i].friends[j], friend_name) == 0) {
                               friend_idx = j;
                               break;
                            }
                         }
 
                         if (friend_idx != -1) {
-                           int removed = 0;
-                           for (int j = 0; j < MAX_FRIENDS; j++) {
-                              if (clients[i].friends[j] == friend_idx) {
-                                 clients[i].friends[j] = -1;
-                                 removed = 1;
-                                 break;
-                              }
+                           for (int j = friend_idx; j < clients[i].num_friends - 1; j++) {
+                              strcpy(clients[i].friends[j], clients[i].friends[j + 1]);
                            }
-                           if (removed) {
-                              write_client(clients[i].sock, "Friend removed.");
-                           } else {
-                              write_client(clients[i].sock, "User not found in your friend list.");
-                           }
+                           clients[i].num_friends--;
+                           write_client(clients[i].sock, "Friend removed.");
+                        } else {
+                           write_client(clients[i].sock, "User not found in your friend list.");
                         }
                      } else {
-                        write_client(clients[i].sock, "User not found.");
+                        write_client(clients[i].sock, "Usage: /removefriend <username>");
                      }
                   } else if (strncmp(buffer, "/addfriend", 10) == 0) {
                      char friend_name[BUF_SIZE];
@@ -368,8 +353,8 @@ static void server_app(void)
                            } else {
                               // Check if already friends
                               int already_friends = 0;
-                              for (int j = 0; j < MAX_FRIENDS; j++) {
-                                 if (clients[i].friends[j] == friend_idx) {
+                              for (int j = 0; j < clients[i].num_friends; j++) {
+                                 if (strcmp(clients[i].friends[j], friend_name) == 0) {
                                     already_friends = 1;
                                     break;
                                  }
@@ -378,15 +363,9 @@ static void server_app(void)
                               if (already_friends) {
                                  write_client(clients[i].sock, "Player already in the list of friends");
                               } else {
-                                 int added = 0;
-                                 for (int j = 0; j < MAX_FRIENDS; j++) {
-                                    if (clients[i].friends[j] == -1) { // Check for an empty slot
-                                       clients[i].friends[j] = friend_idx;
-                                       added = 1;
-                                       break;
-                                    }
-                                 }
-                                 if (added) {
+                                 if (clients[i].num_friends < MAX_FRIENDS) {
+                                    strcpy(clients[i].friends[clients[i].num_friends], friend_name);
+                                    clients[i].num_friends++;
                                     write_client(clients[i].sock, "Friend added.");
                                  } else {
                                     write_client(clients[i].sock, "Your friend list is full.");
@@ -414,8 +393,7 @@ static void server_app(void)
                            if (recipient_idx == i) {
                               write_client(clients[i].sock, "You can't chat with yourself.");
                            } else {
-                              char final_msg[BUF_SIZE];
-                              snprintf(final_msg, BUF_SIZE, "(private) %s: %s", clients[i].name, msg);
+                              snprintf(final_msg, sizeof(final_msg), "(private) %s: %s", clients[i].name, msg);
                               write_client(clients[recipient_idx].sock, final_msg);
                            }
                         } else {
@@ -425,8 +403,7 @@ static void server_app(void)
                         write_client(clients[i].sock, "Usage: /chat <username> <message>");
                      }
                   } else {
-                     char final_msg[BUF_SIZE];
-                     snprintf(final_msg, BUF_SIZE, "%s: %s", clients[i].name, buffer);
+                     snprintf(final_msg, sizeof(final_msg), "%s: %s", clients[i].name, buffer);
                      for (int j = 0; j < actual; j++) {
                         if (clients[j].state == STATE_LOBBY && i != j) {
                            write_client(clients[j].sock, final_msg);
@@ -441,8 +418,7 @@ static void server_app(void)
                         clients[i].state = STATE_LOBBY;
                         clients[i].challenging_who = -1;
 
-                        char msg[BUF_SIZE];
-                        snprintf(msg, BUF_SIZE, "The challenge from %s has been canceled.", clients[i].name);
+                        snprintf(msg, sizeof(msg), "The challenge from %s has been canceled.", clients[i].name);
                         write_client(clients[challenged_idx].sock, msg);
                         snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_LOBBY);
                         write_client(clients[challenged_idx].sock, msg);
@@ -475,12 +451,10 @@ static void server_app(void)
                            clients[i].opponent = challenger_idx;
                            clients[challenger_idx].challenging_who = -1;
 
-                           char acceptance_msg[BUF_SIZE];
-                           snprintf(acceptance_msg, BUF_SIZE, "CHALLENGE_ACCEPTED %s. You are now playing with %s.", clients[i].name, clients[challenger_idx].name);
+                           snprintf(acceptance_msg, sizeof(acceptance_msg), "CHALLENGE_ACCEPTED %s. You are now playing with %s.", clients[i].name, clients[challenger_idx].name);
                            write_client(clients[challenger_idx].sock, acceptance_msg);
 
-                           char confirmation_msg[BUF_SIZE];
-                           snprintf(confirmation_msg, BUF_SIZE, "You have accepted the challenge from %s. You are now playing with %s.", clients[challenger_idx].name, clients[challenger_idx].name);
+                           snprintf(confirmation_msg, sizeof(confirmation_msg), "You have accepted the challenge from %s. You are now playing with %s.", clients[challenger_idx].name, clients[challenger_idx].name);
                            write_client(clients[i].sock, confirmation_msg);
 
                            char msg[BUF_SIZE];
@@ -520,12 +494,10 @@ static void server_app(void)
                            clients[challenger_idx].challenging_who = -1;
                            clients[i].state = STATE_LOBBY;
 
-                           char refusal_msg[BUF_SIZE];
-                           snprintf(refusal_msg, BUF_SIZE, "CHALLENGE_REFUSED %s", clients[i].name);
+                           snprintf(refusal_msg, sizeof(refusal_msg), "CHALLENGE_REFUSED %s", clients[i].name);
                            write_client(clients[challenger_idx].sock, refusal_msg);
 
-                           char confirmation_msg[BUF_SIZE];
-                           snprintf(confirmation_msg, BUF_SIZE, "You have refused the challenge from %s.", clients[challenger_idx].name);
+                           snprintf(confirmation_msg, sizeof(confirmation_msg), "You have refused the challenge from %s.", clients[challenger_idx].name);
                            write_client(clients[i].sock, confirmation_msg);
 
                            char msg[BUF_SIZE];
@@ -629,7 +601,7 @@ static void server_app(void)
    end_connection(sock);
 }
 
-static void clear_clients(Client *clients, int actual)
+void clear_clients(Client *clients, int actual)
 {
    int i = 0;
    for(i = 0; i < actual; i++)
@@ -638,7 +610,7 @@ static void clear_clients(Client *clients, int actual)
    }
 }
 
-static void remove_client(Client *clients, int to_remove, int *actual)
+void remove_client(Client *clients, int to_remove, int *actual)
 {
    /* we remove the client in the array */
    memmove(clients + to_remove, clients + to_remove + 1, (*actual - to_remove - 1) * sizeof(Client));
@@ -648,7 +620,7 @@ static void remove_client(Client *clients, int to_remove, int *actual)
 
 
 
-static int server_init_connection(void)
+int server_init_connection(void)
 {
    SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
    SOCKADDR_IN sin = { 0 };
@@ -685,12 +657,12 @@ static int server_init_connection(void)
    return sock;
 }
 
-static void end_connection(int sock)
+void end_connection(int sock)
 {
    closesocket(sock);
 }
 
-static int read_client(SOCKET sock, char *buffer)
+int read_client(SOCKET sock, char *buffer)
 {
    int n = 0;
 
@@ -706,7 +678,7 @@ static int read_client(SOCKET sock, char *buffer)
    return n;
 }
 
-static void write_client(SOCKET sock, const char *buffer)
+void write_client(SOCKET sock, const char *buffer)
 {
    char new_buffer[BUF_SIZE];
    snprintf(new_buffer, BUF_SIZE, "%s\n", buffer);

@@ -11,7 +11,7 @@ CFLAGS = -Wall -Wextra -std=c11 -g
 
 # Source files
 CLIENT_SRCS = client2.c simple_ui.c
-SERVER_SRCS = server2.c game.c board.c
+SERVER_SRCS = server2.c game.c board.c player.c
 TEST_SRCS = test.c game.c board.c simple_ui.c
 
 # Object files

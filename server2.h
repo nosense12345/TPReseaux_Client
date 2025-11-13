@@ -46,7 +46,8 @@ typedef struct
    SOCKET sock;
    char name[BUF_SIZE];
    char bio[BIO_MAX_LINES][BIO_MAX_LENGTH];
-   int friends[MAX_FRIENDS];
+   char friends[MAX_FRIENDS][BUF_SIZE];
+   int num_friends;
    ClientState state;
    int opponent;
    int challenging_who;
@@ -55,15 +56,15 @@ typedef struct
 
 
 
-static void init(void);
-static void end(void);
-static void server_app(void);
-static int server_init_connection(void);
-static void end_connection(int sock);
-static int read_client(SOCKET sock, char *buffer);
-static void write_client(SOCKET sock, const char *buffer);
-static void remove_client(Client *clients, int to_remove, int *actual);
-static void clear_clients(Client *clients, int actual);
+void init(void);
+void end(void);
+void server_app(void);
+int server_init_connection(void);
+void end_connection(int sock);
+int read_client(SOCKET sock, char *buffer);
+void write_client(SOCKET sock, const char *buffer);
+void remove_client(Client *clients, int to_remove, int *actual);
+void clear_clients(Client *clients, int actual);
 
 
 #endif /* guard */

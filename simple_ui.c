@@ -69,7 +69,7 @@ void ui_redraw_all(ClientState currentState) {
 
     switch (currentState) {
         case STATE_LOBBY:
-            printf("Available commands: /list, /bio, /viewbio [user], /challenge [user], /addfriend [user], /removefriend [user], /friends, /chat [user] [message], /clearchat\n");
+            printf("Available commands: /list, /bio, /viewbio [user], /challenge [user], /addfriend [user], /removefriend [user], /friends, /chat [user] [message], /spectate [user], /clearchat\n");
             break;
         case STATE_BIO:
             printf("Available commands: /endbio, /clearbio\n");
@@ -82,6 +82,9 @@ void ui_redraw_all(ClientState currentState) {
             break;
         case STATE_INGAME:
             printf("Available commands: /move [pit], /quitgame\n");
+            break;
+        case STATE_SPECTATE:
+            printf("Available commands: /stopspectate\n");
             break;
     }
     printf("----------------------------------------\n");
