@@ -8,7 +8,7 @@ Fonctions implémentées:
 
 
 Notre UI est séparé en trois zones :
-- Une zone BOARD où est affiché la partie en cours (pas encore fix)
+- Une zone BOARD où est affiché la partie en cours
 - Une zone CHAT où sont affichés les commandes disponibles dans l'état actuel, l'historique du chat et les print autres que la partie active.
 - une zone INPUT où l'on peut écrire les commandes à executer.
 
@@ -78,3 +78,16 @@ Dans la partie :
 
 
 Les utilisateurs (pseudo, amis, bio) sont sauvegardés dans un fichier .dat lorsque l'utilisateur se déconnecte. Attention, ils ne sont pas sauvegardés si c'est le serveur qui s'éteint avant la déconnexion de l'utilisateur. De plus, les infos ne sont pas visibles par "/list" et "/viewbio [user]" tant que les utilisateurs ne se sont pas reconnectés.
+
+
+
+Organisation de notre application:
+
+  - client2.c/h          # Client contenant toutes les fonctions permettant de communiquer avec le serveur et de traiter ses réponses.
+  - server2.c/h          # Serveur contenant la communication avec le client mais aussi la logique de l'application avec les différents modes et commandes possibles.
+  - game.c/h             # Fichiers contenant la struct game qui contient les informations d'une partie. Ces fichiers contiennent aussi une partie de la logique du jeu d'Awalé
+  - board.c/h            # Fichiers comprenant les fonctions de gestion du plateau (représentant un état d'une partie) et la deuxième moitié de la logique du jeu
+  - player.c/h           # Fichiers comprenant les fonctions de gestion des joueurs
+  - simple_ui.c/h        # Fichiers contenant les fonctions permettant d'afficher notre UI client
+  - common.h             # Définitions partagées et utilisées par plusieurs autres fichiers
+  - Makefile             # Configuration de compilation

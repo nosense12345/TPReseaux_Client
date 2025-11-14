@@ -109,6 +109,7 @@ static void app(const char *address, const char *name)
             break;
          }
 
+
          char *line = strtok(buffer, "\n");
          while (line != NULL) {
             if (strncmp(line, "STATE_UPDATE", 12) == 0) {
@@ -119,9 +120,20 @@ static void app(const char *address, const char *name)
             } else if (strcmp(line, "CLEAR_CHAT") == 0) { // New: Handle CLEAR_CHAT message
                ui_clear_chat();
             } else if (strncmp(line, "CHANGE_BOARD", 12) == 0) {
-               ui_draw_board(line + 12);
-            }
-            else {
+               // Reconstruct the full board string with newlines
+               char full_board[BUF_SIZE * 5];
+               strncpy(full_board, line + 12, sizeof(full_board) - 1);
+               
+               // Continue reading lines until we have the complete board
+               line = strtok(NULL, "\n");
+               while (line != NULL && strlen(full_board) < BUF_SIZE * 5 - 100) {
+                  strncat(full_board, "\n", sizeof(full_board) - strlen(full_board) - 1);
+                  strncat(full_board, line, sizeof(full_board) - strlen(full_board) - 1);
+                  line = strtok(NULL, "\n");
+               }
+               ui_draw_board(full_board);
+               continue;
+            } else {
                ui_add_message(line);
             }
             line = strtok(NULL, "\n");
