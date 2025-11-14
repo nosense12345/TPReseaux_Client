@@ -484,12 +484,11 @@ void server_app(void)
                            client2 = client1->Currentboard->gameRef->player1;
                         }
                         int res = try_a_move(client1->Currentboard->gameRef, move_letter[0], client1->Currentboard, client1);
-                        if (res == -1) {
+                        if (res != 1 && res != 0) {
                            char err_msg[50];
                            snprintf(err_msg, sizeof(err_msg), "%d", res);
                            snprintf(err_msg, sizeof(err_msg), "Invalid move code: %d", res);
                            write_client(client1->sock, err_msg);
-                           return;
                         }
                         char msg[BUF_SIZE];
                         snprintf(msg, BUF_SIZE, "CHANGE_BOARD %s", convert_board_to_string(client1->Currentboard));

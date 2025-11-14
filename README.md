@@ -70,7 +70,7 @@ Dans la partie :
     En partie, vous pouvez :
     - Ecrire dans le chat de la partie en tapant un texte ne commençant pas par une commande
     - Jouer un move avec "/move [pit]" (pit la lettre du trou que vous voulez semer)
-    Un message s'affiche si vous ne pouvez pas jouer ce pit (fonction en développement)
+    Un message s'affiche si vous ne pouvez pas jouer ce pit.
     Les règles sont celles du Awalé de tournoi. Les cas où vous ne pouvez pas jouer sont donc : ce n'est pas votre tour, ce n'est pas un trou à vous, vous affamez l'adversaire en jouant ce trou ou le trou est vide.
     - Quitter la partie avec "/quitgame"
     Vous retournez alors dans le menu (avec l'autre joueur) -> Voir la partie Dans le menu
