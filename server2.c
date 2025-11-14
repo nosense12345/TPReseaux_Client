@@ -522,6 +522,7 @@ void server_app(void)
                         if (clients[i].bio[j][0] == '\0') {
                            strncpy(clients[i].bio[j], buffer, BIO_MAX_LENGTH - 1);
                            clients[i].bio[j][BIO_MAX_LENGTH - 1] = '\0';
+                           write_client(clients[i].sock, buffer);
                            break;
                         }
                      }
