@@ -1,11 +1,12 @@
 #include "simple_ui.h"
+#include "server2.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 static char chat_messages[MAX_CHAT_MESSAGES][MAX_MESSAGE_LENGTH];
 static int message_count = 0;
-static char current_board_display[1024] = "";
+static char current_board_display[BUF_SIZE * 5] = "";
 
 void ui_init(void) {
     // No special initialization needed for printf-based UI

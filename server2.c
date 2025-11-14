@@ -70,7 +70,7 @@ void server_app(void)
 
       if(select(max + 1, &rdfs, NULL, NULL, NULL) == -1)
       {
-         perror("select()");
+         perror("select()") ;
          exit(errno);
       }
 
@@ -88,7 +88,7 @@ void server_app(void)
          int csock = accept(sock, (SOCKADDR *)&csin, &sinsize);
          if(csock == SOCKET_ERROR)
          {
-            perror("accept()");
+            perror("accept()") ;
             continue;
          }
 
@@ -149,70 +149,7 @@ void server_app(void)
                /* client disconnected */
                if(c == 0)
                {
-                  // If client was in game, notify opponent
-                  if (clients[i].state == STATE_INGAME) {
-                     int opponent_idx = clients[i].opponent;
-                     if (opponent_idx != -1) {
-                        clients[opponent_idx].state = STATE_LOBBY;
-                        clients[opponent_idx].opponent = -1;
-
-                        snprintf(msg, sizeof(msg), "Your opponent %s has disconnected. You are back in the lobby.", clients[i].name);
-                        write_client(clients[opponent_idx].sock, msg);
-
-                        snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_LOBBY);
-                        write_client(clients[opponent_idx].sock, msg);
-                     }
-                  } else if (clients[i].state == STATE_CHALLENGING) {
-                     int challenged_idx = clients[i].challenging_who;
-                     if (challenged_idx != -1) {
-                        snprintf(msg, sizeof(msg), "The challenge from %s has been canceled.", clients[i].name);
-                        write_client(clients[challenged_idx].sock, msg);
-                        snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_LOBBY);
-                        write_client(clients[challenged_idx].sock, msg);
-                     }
-                  } else if (clients[i].state == STATE_CHALLENGED) {
-                     // Find the challenger
-                     for (int j = 0; j < actual; j++) {
-                        if (clients[j].challenging_who == i) {
-                           clients[j].state = STATE_LOBBY;
-                           clients[j].challenging_who = -1;
-                           snprintf(msg, sizeof(msg), "%s is no longer available for a challenge.", clients[i].name);
-                           write_client(clients[j].sock, msg);
-                           snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_LOBBY);
-                           write_client(clients[j].sock, msg);
-                           break;
-                        }
-                     }
-                  }
-
-                  closesocket(clients[i].sock);
-                  save_player_data(&clients[i]);
-                  int removed_index = i;
-                  remove_client(clients, i, &actual);
-
-                  // Adjust opponent and challenging_who indices
-                  for (int j = 0; j < actual; j++) {
-                     if (clients[j].opponent > removed_index) {
-                        clients[j].opponent--;
-                     } else if (clients[j].opponent == removed_index) {
-                        clients[j].state = STATE_LOBBY;
-                        clients[j].opponent = -1;
-                     }
-                     if (clients[j].challenging_who > removed_index) {
-                        clients[j].challenging_who--;
-                     } else if (clients[j].challenging_who == removed_index) {
-                        clients[j].state = STATE_LOBBY;
-                        clients[j].challenging_who = -1;
-                     }
-                  }
-
-                  strncpy(buffer, clients[i].name, BUF_SIZE - 1);
-                  strncat(buffer, " disconnected !", BUF_SIZE - strlen(buffer) - 1);
-                  for (int j = 0; j < actual; j++) {
-                     if (clients[j].state == STATE_LOBBY) {
-                        write_client(clients[j].sock, buffer);
-                     }
-                  }
+                  handle_client_disconnection(clients, i, &actual);
                }
                if (clients[i].state == STATE_LOBBY) {
                   if (strcmp(buffer, "/list") == 0) {
@@ -222,6 +159,8 @@ void server_app(void)
                         strncat(user_list, "\n", BUF_SIZE - strlen(user_list) - 1);
                      }
                      write_client(clients[i].sock, user_list);
+                  } else if (strcmp(buffer, "/quit") == 0) {
+                     handle_client_disconnection(clients, i, &actual);
                   } else if (strncmp(buffer, "/challenge", 10) == 0) {
                      char challenged_name[BUF_SIZE];
                      if (sscanf(buffer, "/challenge %s", challenged_name) == 1) {
@@ -351,7 +290,7 @@ void server_app(void)
                            if (friend_idx == i) {
                               write_client(clients[i].sock, "You can't add yourself as a friend.");
                            } else {
-                              // Check if already friends
+                              /* Check if already friends */
                               int already_friends = 0;
                               for (int j = 0; j < clients[i].num_friends; j++) {
                                  if (strcmp(clients[i].friends[j], friend_name) == 0) {
@@ -405,7 +344,7 @@ void server_app(void)
                   } else {
                      snprintf(final_msg, sizeof(final_msg), "%s: %s", clients[i].name, buffer);
                      for (int j = 0; j < actual; j++) {
-                        if (clients[j].state == STATE_LOBBY && i != j) {
+                        if (clients[j].state == STATE_LOBBY) {
                            write_client(clients[j].sock, final_msg);
                         }
                      }
@@ -518,7 +457,7 @@ void server_app(void)
                   if (strcmp(buffer, "/quitgame") == 0) {
                      int opponent_idx = clients[i].opponent;
 
-                     // Notify the player who quit
+                     /* Notify the player who quit */
                      write_client(clients[i].sock, "You have quit the game. You are now back in the lobby.");
                      clients[i].state = STATE_LOBBY;
                      clients[i].opponent = -1;
@@ -526,7 +465,7 @@ void server_app(void)
                      snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_LOBBY);
                      write_client(clients[i].sock, msg);
 
-                     // Notify the opponent
+                     /* Notify the opponent */
                      if (opponent_idx != -1) {
                         write_client(clients[opponent_idx].sock, "Your opponent has quit the game. You are now back in the lobby.");
                         clients[opponent_idx].state = STATE_LOBBY;
@@ -588,7 +527,7 @@ void server_app(void)
                      }
                   }
                } else {
-                  // Fallback for unhandled states or commands
+                  /* Fallback for unhandled states or commands */
                   write_client(clients[i].sock, "Unknown command or invalid state.");
                }
                break;
@@ -627,14 +566,14 @@ int server_init_connection(void)
 
    if(sock == INVALID_SOCKET)
    {
-      perror("socket()");
+      perror("socket()") ;
       exit(errno);
    }
 
    int reuse = 1;
    if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < -0)
    {
-      perror("setsockopt()");
+      perror("setsockopt()") ;
       exit(errno);
    }
 
@@ -644,13 +583,13 @@ int server_init_connection(void)
 
    if(bind(sock,(SOCKADDR *) &sin, sizeof sin) == SOCKET_ERROR)
    {
-      perror("bind()");
+      perror("bind()") ;
       exit(errno);
    }
 
    if(listen(sock, MAX_CLIENTS) == SOCKET_ERROR)
    {
-      perror("listen()");
+      perror("listen()") ;
       exit(errno);
    }
 
@@ -668,7 +607,7 @@ int read_client(SOCKET sock, char *buffer)
 
    if((n = recv(sock, buffer, BUF_SIZE - 1, 0)) < 0)
    {
-      perror("recv()");
+      perror("recv()") ;
       /* if recv error we disonnect the client */
       n = 0;
    }
@@ -684,7 +623,7 @@ void write_client(SOCKET sock, const char *buffer)
    snprintf(new_buffer, BUF_SIZE, "%s\n", buffer);
    if(send(sock, new_buffer, strlen(new_buffer), 0) < 0)
    {
-      perror("send()");
+      perror("send()") ;
       exit(errno);
    }
 }
@@ -698,4 +637,75 @@ int main(void)
    end();
 
    return EXIT_SUCCESS;
+}
+
+void handle_client_disconnection(Client *clients, int i, int *actual)
+{
+   char msg[BUF_SIZE * 3];
+   /* If client was in game, notify opponent */
+   if (clients[i].state == STATE_INGAME) {
+      int opponent_idx = clients[i].opponent;
+      if (opponent_idx != -1) {
+         clients[opponent_idx].state = STATE_LOBBY;
+         clients[opponent_idx].opponent = -1;
+
+         snprintf(msg, sizeof(msg), "Your opponent %s has disconnected. You are back in the lobby.", clients[i].name);
+         write_client(clients[opponent_idx].sock, msg);
+
+         snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_LOBBY);
+         write_client(clients[opponent_idx].sock, msg);
+      }
+   } else if (clients[i].state == STATE_CHALLENGING) {
+      int challenged_idx = clients[i].challenging_who;
+      if (challenged_idx != -1) {
+         snprintf(msg, sizeof(msg), "The challenge from %s has been canceled.", clients[i].name);
+         write_client(clients[challenged_idx].sock, msg);
+         snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_LOBBY);
+         write_client(clients[challenged_idx].sock, msg);
+      }
+   } else if (clients[i].state == STATE_CHALLENGED) {
+      /* Find the challenger */
+      for (int j = 0; j < *actual; j++) {
+         if (clients[j].challenging_who == i) {
+            clients[j].state = STATE_LOBBY;
+            clients[j].challenging_who = -1;
+            snprintf(msg, sizeof(msg), "%s is no longer available for a challenge.", clients[i].name);
+            write_client(clients[j].sock, msg);
+            snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_LOBBY);
+            write_client(clients[j].sock, msg);
+            break;
+         }
+      }
+   }
+
+   char disconnected_client_name[BUF_SIZE];
+   strncpy(disconnected_client_name, clients[i].name, BUF_SIZE - 1);
+
+   closesocket(clients[i].sock);
+   save_player_data(&clients[i]);
+   int removed_index = i;
+   remove_client(clients, i, actual);
+
+   /* Adjust opponent and challenging_who indices */
+   for (int j = 0; j < *actual; j++) {
+      if (clients[j].opponent > removed_index) {
+         clients[j].opponent--;
+      } else if (clients[j].opponent == removed_index) {
+         clients[j].state = STATE_LOBBY;
+         clients[j].opponent = -1;
+      }
+      if (clients[j].challenging_who > removed_index) {
+         clients[j].challenging_who--;
+      } else if (clients[j].challenging_who == removed_index) {
+         clients[j].state = STATE_LOBBY;
+         clients[j].challenging_who = -1;
+      }
+   }
+
+   snprintf(msg, sizeof(msg), "%s disconnected !", disconnected_client_name);
+   for (int j = 0; j < *actual; j++) {
+      if (clients[j].state == STATE_LOBBY) {
+         write_client(clients[j].sock, msg);
+      }
+   }
 }

@@ -65,6 +65,7 @@ int read_client(SOCKET sock, char *buffer);
 void write_client(SOCKET sock, const char *buffer);
 void remove_client(Client *clients, int to_remove, int *actual);
 void clear_clients(Client *clients, int actual);
+void handle_client_disconnection(Client *clients, int i, int *actual);
 
 
 #endif /* guard */

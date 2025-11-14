@@ -105,8 +105,8 @@ char* convert_board_to_string(struct board* b)
         }
     }
 
-    char* boardString = malloc(4096 * sizeof(char));
-    snprintf(boardString, 4096,
+    char* boardString = malloc(BUF_SIZE * 5 * sizeof(char));
+    snprintf(boardString, BUF_SIZE * 5,
         "Score %s: %d | Score %s: %d\n"
         "Current Player: %s\n"
         "Board:\n"
