@@ -6,7 +6,10 @@ name:joe
 bio:hey
 bio:this is my bio
 bio:joe
+friend:karim
 end
 name:karim
 bio:karim bio
+bio:hey
+bio:karim
 end
