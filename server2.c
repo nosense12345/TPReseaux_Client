@@ -194,7 +194,7 @@ void server_app(void)
                               write_client(clients[challenger_idx].sock, msg);
 
                               write_client(clients[challenger_idx].sock, "CLEAR_CHAT");
-                              snprintf(msg, sizeof(msg), "You have challenged %s.", clients[challenged_idx].name);
+                              snprintf(msg, sizeof(msg) - strlen(msg), "You have challenged %s.", clients[challenged_idx].name);
                               write_client(clients[challenger_idx].sock, msg);
                               
                            }
@@ -342,7 +342,7 @@ void server_app(void)
                         write_client(clients[i].sock, "Usage: /chat <username> <message>");
                      }
                   } else {
-                     snprintf(final_msg, sizeof(final_msg), "%s: %s", clients[i].name, buffer);
+                     snprintf(final_msg, sizeof(final_msg) - strlen(final_msg), "%s: %s", clients[i].name, buffer);
                      for (int j = 0; j < actual; j++) {
                         if (clients[j].state == STATE_LOBBY) {
                            write_client(clients[j].sock, final_msg);
@@ -390,10 +390,10 @@ void server_app(void)
                            clients[i].opponent = challenger_idx;
                            clients[challenger_idx].challenging_who = -1;
 
-                           snprintf(acceptance_msg, sizeof(acceptance_msg), "CHALLENGE_ACCEPTED %s. You are now playing with %s.", clients[i].name, clients[challenger_idx].name);
+                           snprintf(acceptance_msg, sizeof(acceptance_msg) - strlen(acceptance_msg), "CHALLENGE_ACCEPTED %s. You are now playing with %s.", clients[challenger_idx].name, clients[i].name);
                            write_client(clients[challenger_idx].sock, acceptance_msg);
 
-                           snprintf(confirmation_msg, sizeof(confirmation_msg), "You have accepted the challenge from %s. You are now playing with %s.", clients[challenger_idx].name, clients[challenger_idx].name);
+                           snprintf(confirmation_msg, sizeof(confirmation_msg) - strlen(confirmation_msg), "You have accepted the challenge from %s. You are now playing with %s.", clients[challenger_idx].name, clients[challenger_idx].name);
                            write_client(clients[i].sock, confirmation_msg);
 
                            char msg[BUF_SIZE];
@@ -485,22 +485,65 @@ void server_app(void)
                         }
                         int res = try_a_move(client1->Currentboard->gameRef, move_letter[0], client1->Currentboard, client1);
                         if (res != 1 && res != 0) {
-                           char err_msg[50];
-                           snprintf(err_msg, sizeof(err_msg), "%d", res);
-                           snprintf(err_msg, sizeof(err_msg), "Invalid move code: %d", res);
+                           char err_msg[70];
+                           switch (res)
+                           {
+                              case 2:
+                                 snprintf(err_msg, sizeof(err_msg), "You can't play this move because you need to feed your opponent.");
+                                 break;
+                              case 3:
+                                 snprintf(err_msg, sizeof(err_msg), "This pit is empty. Choose another pit.");
+                                 break;
+                              case 4:
+                                 snprintf(err_msg, sizeof(err_msg), "This is not your pit. Choose one of your own pits.");
+                                 break;
+                              case 5:
+                                 snprintf(err_msg, sizeof(err_msg), "This is not a pit, please use /move [pit].");
+                                 break;
+                              case 6:
+                                 snprintf(err_msg, sizeof(err_msg), "It's not your turn. Please wait for your turn.");
+                                 break;
+                              default:
+                                 snprintf(err_msg, sizeof(err_msg), "Unknown error.");
+                                 break;
+                           }
                            write_client(client1->sock, err_msg);
+                        } else {
+                           char board_update_msg[BUF_SIZE];
+                           snprintf(board_update_msg, BUF_SIZE - strlen(board_update_msg), "%s chose to sow from %c", client1->name, move_letter[0]);
+                           write_client(client1->sock, board_update_msg);
+                           write_client(client2->sock, board_update_msg);
+                           char msg[BUF_SIZE];
+                           snprintf(msg, BUF_SIZE, "CHANGE_BOARD %s", convert_board_to_string(client1->Currentboard));
+                           write_client(client1->sock, msg);
+                           write_client(client2->sock, msg);
+                           char msgend[BUF_SIZE];
+                           if (res == 1) {
+                              int diff = client1->Currentboard->gameRef->scoreP1 - client1->Currentboard->gameRef->scoreP2;
+                              if (diff == 0) {
+                                    write_client(client1->sock, "The game is over! It's a tie!");
+                                    write_client(client2->sock, "The game is over! It's a tie!");
+                              } else if (diff > 0) {
+                                    snprintf(msgend, sizeof(msg) - strlen(msgend), "The game is over! %s wins %d to %d!", client1->Currentboard->gameRef->player1->name, client1->Currentboard->gameRef->scoreP1, client1->Currentboard->gameRef->scoreP2);
+                                    write_client(client1->sock, msgend);
+                                    write_client(client2->sock, msgend);
+                              } else if (diff < 0) {
+                                    snprintf(msgend, sizeof(msg) - strlen(msgend), "The game is over! %s wins %d to %d!", client1->Currentboard->gameRef->player2->name, client1->Currentboard->gameRef->scoreP2, client1->Currentboard->gameRef->scoreP1);
+                                    write_client(client1->sock, msgend);
+                                    write_client(client2->sock, msgend);
+                                    break;
+                              }
+                              write_client(client1->sock, "You can quit with /quitgame.");
+                              write_client(client2->sock, "You can quit with /quitgame.");
+                           }
                         }
-                        char msg[BUF_SIZE];
-                        snprintf(msg, BUF_SIZE, "CHANGE_BOARD %s", convert_board_to_string(client1->Currentboard));
-                        write_client(client1->sock, msg);
-                        write_client(client2->sock, msg);
                      }
                         
                         
                      
                   } else if (buffer[0] != '/') {
                      char final_msg[BUF_SIZE];
-                     snprintf(final_msg, BUF_SIZE, "%s: %s", clients[i].name, buffer);
+                     snprintf(final_msg, BUF_SIZE - strlen(final_msg), "%s: %s", clients[i].name, buffer);
                      write_client(clients[clients[i].opponent].sock, final_msg);
                   } else {
                      write_client(clients[i].sock, "You are in a game. Only /quitgame, /move <pit_number> or in-game chat are available.");

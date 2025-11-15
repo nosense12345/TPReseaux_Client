@@ -1,6 +1,6 @@
 # TPReseaux_Client
 Fonctions implémentées:
-- Bio des joueurs, modifiable, affichable et consercé même si le client est déconnecté.
+- Bio des joueurs, modifiable, affichable.
 - Ajout/retrait/affichage des Amis (pas de comportement spécial implémenté)
 - Chat global, chat privé avec un autre joueur et chat de partie
 - Challenge des autres joueurs (pour lancer une partie)
@@ -70,11 +70,12 @@ Dans la partie :
     En partie, vous pouvez :
     - Ecrire dans le chat de la partie en tapant un texte ne commençant pas par une commande
     - Jouer un move avec "/move [pit]" (pit la lettre du trou que vous voulez semer)
-    Un message s'affiche si vous ne pouvez pas jouer ce pit.
+    Un message s'affiche si vous ne pouvez pas jouer ce pit vous expliquant la raison.
+    Si vous avez joué un move valide, un message est affiché pour indiquer à vous et à votre adversaire le pit choisis.
     Les règles sont celles du Awalé de tournoi. Les cas où vous ne pouvez pas jouer sont donc : ce n'est pas votre tour, ce n'est pas un trou à vous, vous affamez l'adversaire en jouant ce trou ou le trou est vide.
     - Quitter la partie avec "/quitgame"
     Vous retournez alors dans le menu (avec l'autre joueur) -> Voir la partie Dans le menu
-    La gestion de fin de partie est encore en développement. Les joueurs doivent donc quitter d'eux même si ils ont un score de plus de 24 ou s'ils se considèrent comme dans une situation de boucle infinie.
+    Les joueurs reçoivent un message quand la partie est finie, mais ils restent dans la partie pour pouvoir voir le board final, discuter avec leur adversaire plus longtemps ou tenter de trouver un résultat différent dans le cas d'une fin par boucle (retour dans une situation déjà rencontrée). Les joueurs doivent donc quitter d'eux-même une fois qu'ils sont satisfaits.
 
 
 Les utilisateurs (pseudo, amis, bio) sont sauvegardés dans un fichier .dat lorsque l'utilisateur se déconnecte. Attention, ils ne sont pas sauvegardés si c'est le serveur qui s'éteint avant la déconnexion de l'utilisateur. De plus, les infos ne sont pas visibles par "/list" et "/viewbio [user]" tant que les utilisateurs ne se sont pas reconnectés.
