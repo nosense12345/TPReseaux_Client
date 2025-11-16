@@ -131,6 +131,90 @@ char* convert_board_to_string(struct board* b)
     return boardString;
 }
 
+char* convert_board_to_string_player_view(struct board* b, Client* player)
+// Returns a string representation of the board
+// Example:
+// Score Patrick: 0 | Score Spongebob: 0
+// Current Player: Patrick
+// Board:
+// a | b | c | d | e | f
+// 4 | 4 | 4 | 4 | 4 | 4
+// -------------------
+// 4 | 4 | 4 | 4 | 4 | 4
+// A | B | C | D | E | F
+{
+    if (b == NULL) return NULL;
+    char* listeSpaces[12];
+    for (int i = 0; i < 12; i++) {
+        listeSpaces[i] = malloc(100 * sizeof(char)); // Allocate memory for each string
+        strcpy(listeSpaces[i], ""); // Initialize with empty string
+    }
+
+    for (int i = 0; i < 12; i++) {
+        for (int j = 0; j <= b->stateHoles[i]; j+=10) {
+            strcat(listeSpaces[i], " ");
+        }
+    }
+
+    char* boardString = malloc(BUF_SIZE * 5 * sizeof(char));
+    char indication_turn[50];
+    if ((player == b->gameRef->player1 && b->currentPlayer == PLAYER1) ||
+        (player == b->gameRef->player2 && b->currentPlayer == PLAYER2)) {
+        snprintf(indication_turn, sizeof(indication_turn), "It's your turn !");
+    } else {
+        snprintf(indication_turn, sizeof(indication_turn), "It's your opponent's turn. Wait for them to play.");
+    }
+    if (player == b->gameRef->player1) {
+        // Player 1 view: show the normal board
+        snprintf(boardString, BUF_SIZE * 5,
+        "Score %s: %d | Score %s: %d\n"
+        "Current Player: %s\n%s\n"
+        "Board:\n"
+        "a%s| b%s| c%s| d%s| e%s| f\n"
+        "%d | %d | %d | %d | %d | %d\n"
+        "-------------------\n"
+        "%d | %d | %d | %d | %d | %d\n"
+        "A%s| B%s| C%s| D%s| E%s| F\n",
+        b->gameRef->player1->name, b->capturedSeeds[0],
+        b->gameRef->player2->name, b->capturedSeeds[1],
+        (b->currentPlayer == PLAYER1) ? b->gameRef->player1->name : b->gameRef->player2->name,
+        indication_turn,
+        listeSpaces[11], listeSpaces[10], listeSpaces[9], listeSpaces[8], listeSpaces[7],
+        b->stateHoles[11], b->stateHoles[10], b->stateHoles[9], b->stateHoles[8], b->stateHoles[7], b->stateHoles[6],
+        b->stateHoles[0], b->stateHoles[1], b->stateHoles[2], b->stateHoles[3], b->stateHoles[4], b->stateHoles[5],
+        listeSpaces[0], listeSpaces[1], listeSpaces[2], listeSpaces[3], listeSpaces[4]
+        );
+    } else {
+        // Player 2 view: invert the board
+        snprintf(boardString, BUF_SIZE * 5,
+        "Score %s: %d | Score %s: %d\n"
+        "Current Player: %s\n%s\n"
+        "Board:\n"
+        "F%s| E%s| D%s| C%s| B%s| A\n"
+        "%d | %d | %d | %d | %d | %d\n"
+        "-------------------\n"
+        "%d | %d | %d | %d | %d | %d\n"
+        "f%s| e%s| d%s| c%s| b%s| a\n",
+        b->gameRef->player1->name, b->capturedSeeds[0],
+        b->gameRef->player2->name, b->capturedSeeds[1],
+        (b->currentPlayer == PLAYER1) ? b->gameRef->player1->name : b->gameRef->player2->name,
+        indication_turn,
+        listeSpaces[5], listeSpaces[4], listeSpaces[3], listeSpaces[2], listeSpaces[1],
+        b->stateHoles[5], b->stateHoles[4], b->stateHoles[3], b->stateHoles[2], b->stateHoles[1], b->stateHoles[0],
+        b->stateHoles[6], b->stateHoles[7], b->stateHoles[8], b->stateHoles[9], b->stateHoles[10], b->stateHoles[11],
+        listeSpaces[6], listeSpaces[7], listeSpaces[8], listeSpaces[9], listeSpaces[10]
+        );
+    }
+    
+
+    for (int i = 0; i < 12; i++) {
+        free(listeSpaces[i]); // Free the allocated memory
+    }
+
+    return boardString;
+}
+
+
 int is_game_over(struct board* b)
 // Return 1 if game over, 0 otherwise
 // Return -1 if board is NULL

@@ -183,7 +183,7 @@ void server_app(void)
                               clients[challenger_idx].state = STATE_CHALLENGING;
                               clients[challenger_idx].challenging_who = challenged_idx;
 
-                              snprintf(challenge_msg, sizeof(challenge_msg), "CHALLENGE_FROM %s", clients[challenger_idx].name);
+                              snprintf(challenge_msg, sizeof(challenge_msg), "CHALLENGE_FROM %s\nPlease answer his challenge.", clients[challenger_idx].name);
                               write_client(clients[challenged_idx].sock, challenge_msg);
 
                               char msg[BUF_SIZE];
@@ -207,8 +207,21 @@ void server_app(void)
                   } else if (strcmp(buffer, "/bio") == 0) {
                      clients[i].state = STATE_BIO;
                      char msg[BUF_SIZE];
+                     write_client(clients[i].sock, "CLEAR_CHAT");
                      snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_BIO);
                      write_client(clients[i].sock, msg);
+                     snprintf(bio_response, sizeof(bio_response), "Your bio:\n");
+                     for (int j = 0; j < BIO_MAX_LINES; j++) {
+                        if (clients[i].bio[j][0] != '\0') {
+                           strncat(bio_response, clients[i].bio[j], BUF_SIZE - strlen(bio_response) - 1);
+                           strncat(bio_response, "\n", BUF_SIZE - strlen(bio_response) - 1);
+                        }
+                     }
+                     if (strlen(bio_response) == (10)) { // only the header
+                        write_client(clients[i].sock, "You dont have a bio yet. Type your bio:");
+                     } else {
+                        write_client(clients[i].sock, bio_response);
+                     }
                   } else if (strncmp(buffer, "/viewbio", 8) == 0) {
                      char username[BUF_SIZE];
                      if (sscanf(buffer, "/viewbio %s", username) == 1) {
@@ -231,6 +244,7 @@ void server_app(void)
                            if (strlen(bio_response) == (strlen(clients[user_idx].name) + 15)) { // only the header
                               write_client(clients[i].sock, "This user has no bio.");
                            } else {
+                              write_client(clients[i].sock, "CLEAR_CHAT");
                               write_client(clients[i].sock, bio_response);
                            }
                         } else {
@@ -250,6 +264,7 @@ void server_app(void)
                      if (friend_count == 0) {
                         write_client(clients[i].sock, "You have no friends.");
                      } else {
+                        write_client(clients[i].sock, "CLEAR_CHAT");
                         write_client(clients[i].sock, friend_list);
                      }
                   } else if (strncmp(buffer, "/removefriend", 13) == 0) {
@@ -334,6 +349,8 @@ void server_app(void)
                            } else {
                               snprintf(final_msg, sizeof(final_msg), "(private) %s: %s", clients[i].name, msg);
                               write_client(clients[recipient_idx].sock, final_msg);
+                              snprintf(final_msg, sizeof(final_msg), "(private) From you to %s: %s", clients[recipient_idx].name, msg);
+                              write_client(clients[i].sock, final_msg);
                            }
                         } else {
                            write_client(clients[i].sock, "Player not found");
@@ -406,8 +423,9 @@ void server_app(void)
                            struct board* b = create_board(g);
                            clients[i].Currentboard = b;
                            clients[challenger_idx].Currentboard = b;
-                           snprintf(msg, BUF_SIZE, "CHANGE_BOARD%s", convert_board_to_string(b));
+                           snprintf(msg, BUF_SIZE, "CHANGE_BOARD%s", convert_board_to_string_player_view(b, &clients[challenger_idx]));
                            write_client(clients[challenger_idx].sock, msg);
+                           snprintf(msg, BUF_SIZE, "CHANGE_BOARD%s", convert_board_to_string_player_view(b, &clients[i]));
                            write_client(clients[i].sock, msg);
 
 
@@ -514,9 +532,11 @@ void server_app(void)
                            write_client(client1->sock, board_update_msg);
                            write_client(client2->sock, board_update_msg);
                            char msg[BUF_SIZE];
-                           snprintf(msg, BUF_SIZE, "CHANGE_BOARD %s", convert_board_to_string(client1->Currentboard));
+                           snprintf(msg, BUF_SIZE, "CHANGE_BOARD %s", convert_board_to_string_player_view(client1->Currentboard, client1));
+                           char msg2[BUF_SIZE];
+                           snprintf(msg2, BUF_SIZE, "CHANGE_BOARD %s", convert_board_to_string_player_view(client1->Currentboard, client2));
                            write_client(client1->sock, msg);
-                           write_client(client2->sock, msg);
+                           write_client(client2->sock, msg2);
                            char msgend[BUF_SIZE];
                            if (res == 1) {
                               int diff = client1->Currentboard->gameRef->scoreP1 - client1->Currentboard->gameRef->scoreP2;
@@ -545,6 +565,7 @@ void server_app(void)
                      char final_msg[BUF_SIZE];
                      snprintf(final_msg, BUF_SIZE - strlen(final_msg), "%s: %s", clients[i].name, buffer);
                      write_client(clients[clients[i].opponent].sock, final_msg);
+                     write_client(clients[i].sock, final_msg);
                   } else {
                      write_client(clients[i].sock, "You are in a game. Only /quitgame, /move <pit_number> or in-game chat are available.");
                   }
@@ -552,13 +573,15 @@ void server_app(void)
                   if (strcmp(buffer, "/endbio") == 0) {
                      clients[i].state = STATE_LOBBY;
                      char msg[BUF_SIZE];
+                     write_client(clients[i].sock, "CLEAR_CHAT");
                      snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_LOBBY);
                      write_client(clients[i].sock, msg);
                   } else if (strcmp(buffer, "/clearbio") == 0) {
                      for (int j = 0; j < BIO_MAX_LINES; j++) {
                         clients[i].bio[j][0] = '\0';
                      }
-                     write_client(clients[i].sock, "Your bio has been cleared.");
+                     write_client(clients[i].sock, "CLEAR_CHAT");
+                     write_client(clients[i].sock, "Your bio has been cleared. Write your new bio:");
                   } else {
                      for (int j = 0; j < BIO_MAX_LINES; j++) {
                         if (clients[i].bio[j][0] == '\0') {

@@ -40,6 +40,7 @@ struct board* create_board(struct game* g);
 struct board* create_copy_board(struct board* b);
 int delete_the_board(struct board* b);
 char* convert_board_to_string(struct board* b);
+char* convert_board_to_string_player_view(struct board* b, Client* player);
 int is_game_over(struct board* b);
 int play_a_move_on_board(struct board* b, int move);
 int is_board_legal(struct board* b);
