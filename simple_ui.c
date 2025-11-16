@@ -82,10 +82,10 @@ void ui_redraw_all(ClientState currentState) {
             printf("Available commands: /cancelchallenge\n");
             break;
         case STATE_INGAME:
-            printf("Available commands: /move [pit], /quitgame\n");
+            printf("Available commands: /move [pit], /quitgame, /clearchat\n");
             break;
         case STATE_SPECTATE:
-            printf("Available commands: /stopspectate\n");
+            printf("Available commands: /stopspectate, /clearchat\n");
             break;
     }
     printf("----------------------------------------\n");
