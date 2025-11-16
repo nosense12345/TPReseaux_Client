@@ -1,10 +1,17 @@
 # TPReseaux_Client
 Fonctions implémentées:
-- Bio des joueurs, modifiable, affichable.
-- Ajout/retrait/affichage des Amis (pas de comportement spécial implémenté)
-- Chat global, chat privé avec un autre joueur et chat de partie
+- Jeu de Awalé (règles officielles, décompte des points, detection de fin de partie)
+- Client/serveur fonctionnel
+- Persisistance des données du client (nom, amis, bio)
 - Challenge des autres joueurs (pour lancer une partie)
-- Jeu de Awalé
+- Détection des coups interdits lors d'une partie
+- Possibilité pour le serveur de gérer plusieurs parties simultannées (pas pour les mêmes clients)
+- Chat global dans le menu, chat privé dans le menu entre deux clients et chat de partie entre les joueurs
+- Bio des joueurs, modifiable et affichable
+- Ajout/retrait/affichage des Amis (pas de comportement spécial implémenté)
+- Affichage du plateau de jeu adapté selon le joueur. (retourne le plateau pour que le côté du joueur soit en face de lui dans son UI)
+- 
+
 
 
 Notre UI est séparé en trois zones :
@@ -76,6 +83,7 @@ Dans la partie :
     - Quitter la partie avec "/quitgame"
     Vous retournez alors dans le menu (avec l'autre joueur) -> Voir la partie Dans le menu
     Les joueurs reçoivent un message quand la partie est finie, mais ils restent dans la partie pour pouvoir voir le board final, discuter avec leur adversaire plus longtemps ou tenter de trouver un résultat différent dans le cas d'une fin par boucle (retour dans une situation déjà rencontrée). Les joueurs doivent donc quitter d'eux-même une fois qu'ils sont satisfaits.
+    - Vider la partie CHAT de l'UI avec "/clearchat"
 
 
 Les utilisateurs (pseudo, amis, bio) sont sauvegardés dans un fichier .dat lorsque l'utilisateur se déconnecte. Attention, ils ne sont pas sauvegardés si c'est le serveur qui s'éteint avant la déconnexion de l'utilisateur. De plus, les infos ne sont pas visibles par "/list" et "/viewbio [user]" tant que les utilisateurs ne se sont pas reconnectés.
