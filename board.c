@@ -3,6 +3,7 @@
 #include "board.h"
 
 struct board* create_board(struct game* g)
+// Create and initialize a new board for the given game
 {
     struct board* newBoard = malloc(sizeof(struct board));
     for (int i = 0; i < 12; i++) {
@@ -20,6 +21,7 @@ struct board* create_board(struct game* g)
 }
 
 struct board* create_copy_board(struct board* b)
+// Create a deep copy of the given board
 {
     if (b == NULL) return NULL;
 
@@ -66,6 +68,7 @@ struct board* create_copy_board(struct board* b)
 }
 
 int delete_the_board(struct board* b)
+// Free all memory associated with the board
 {
     if (b == NULL) return -1;
     // Free the log history
@@ -93,7 +96,7 @@ char* convert_board_to_string(struct board* b)
 // A | B | C | D | E | F
 {
     if (b == NULL) return NULL;
-    char* listeSpaces[12];
+    char* listeSpaces[12]; // Array to hold strings for spaces in each hole
     for (int i = 0; i < 12; i++) {
         listeSpaces[i] = malloc(100 * sizeof(char)); // Allocate memory for each string
         strcpy(listeSpaces[i], ""); // Initialize with empty string
@@ -132,8 +135,8 @@ char* convert_board_to_string(struct board* b)
 }
 
 char* convert_board_to_string_player_view(struct board* b, Client* player)
-// Returns a string representation of the board
-// Example:
+// Returns a string representation of the board that is oriented for the given player
+// Example from Player 1's perspective:
 // Score Patrick: 0 | Score Spongebob: 0
 // Current Player: Patrick
 // Board:
@@ -142,9 +145,19 @@ char* convert_board_to_string_player_view(struct board* b, Client* player)
 // -------------------
 // 4 | 4 | 4 | 4 | 4 | 4
 // A | B | C | D | E | F
+//
+// Example from Player 2's perspective:
+// Score Patrick: 0 | Score Spongebob: 0
+// Current Player: Patrick
+// Board:
+// F | E | D | C | B | A
+// 4 | 4 | 4 | 4 | 4 | 4
+// ------------------- 
+// 4 | 4 | 4 | 4 | 4 | 4
+// f | e | d | c | b | a
 {
     if (b == NULL) return NULL;
-    char* listeSpaces[12];
+    char* listeSpaces[12]; // To hold spacing for each hole
     for (int i = 0; i < 12; i++) {
         listeSpaces[i] = malloc(100 * sizeof(char)); // Allocate memory for each string
         strcpy(listeSpaces[i], ""); // Initialize with empty string
@@ -327,6 +340,7 @@ int play_a_move_on_board(struct board* b, int move)
         }
     }
 
+    // We test capture part of the move on a copy of the board to see if we can capture seeds
     struct board* copyBoard = create_copy_board(b);
     while ((copyBoard->stateHoles[index] == 2 || 
             copyBoard->stateHoles[index] == 3) &&
@@ -359,6 +373,7 @@ int play_a_move_on_board(struct board* b, int move)
         }
     }
     if (side1_empty || side2_empty) {
+    // If capturing would starve opponent, do not capture
         delete_the_board(copyBoard);
     } else {
         b->capturedSeeds[0] = copyBoard->capturedSeeds[0];
@@ -374,7 +389,7 @@ int play_a_move_on_board(struct board* b, int move)
 
     
 
-    return 0;
+    return 0; // Move played successfully
 }
 
 int is_board_legal(struct board* b)

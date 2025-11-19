@@ -51,6 +51,7 @@ typedef struct
    ClientState state;
    int opponent;
    int challenging_who;
+   int challenge_mode; // 0 for PUBLIC, 1 for PRIVATE
    struct board* Currentboard;
 } Client;
 

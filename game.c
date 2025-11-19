@@ -3,6 +3,7 @@
 #include "game.h"
 
 struct game* create_game(Client* player1, Client* player2, enum mode gameMode)
+// Create and initialize a new game
 {
     struct game* newGame = malloc(sizeof(struct game));
     newGame->player1 = player1;
@@ -13,6 +14,10 @@ struct game* create_game(Client* player1, Client* player2, enum mode gameMode)
     leLog->nbMoves = 0;
     leLog->head = NULL;
     newGame->logGame = leLog;
+    struct listeSpectateurs* laListe = malloc(sizeof(struct listeSpectateurs));
+    laListe->nbSpectators = 0;
+    laListe->head = NULL;
+    newGame->spectators = laListe;
     newGame->gameState = IN_PROGRESS;
     newGame->gameMode = gameMode;
     //newGame->gameChat = create_chat();
@@ -21,6 +26,7 @@ struct game* create_game(Client* player1, Client* player2, enum mode gameMode)
 }
 
 int delete_the_game(struct game* g)
+// Free all memory associated with the game
 {
     if (g == NULL) return -1;
 
@@ -32,6 +38,15 @@ int delete_the_game(struct game* g)
         free(temp);
     }
     free(g->logGame);
+
+    // Free the listeSpectateurs
+    struct listeChaineeSpectateurs* currentSpec = g->spectators->head;
+    while (currentSpec != NULL) {
+        struct listeChaineeSpectateurs* temp = currentSpec;
+        currentSpec = currentSpec->next;
+        free(temp);
+    }
+    free(g->spectators);
 
     //delete_the_chat(g->gameChat);
 
@@ -118,4 +133,60 @@ int change_the_mode(struct game* g, enum mode newMode)
 {
     g->gameMode = newMode;
     return 0;
+}
+
+int add_spectator_to_game(struct game* g, Client* spectator)
+// Return 0 if successful
+// Return -1 if game or spectator is NULL
+{
+    if (g == NULL || spectator == NULL) return -1;
+
+    struct listeChaineeSpectateurs* newSpec = malloc(sizeof(struct listeChaineeSpectateurs));
+    newSpec->spectator = spectator;
+    newSpec->next = NULL;
+
+    if (g->spectators->head == NULL) {
+        g->spectators->head = newSpec;
+        g->spectators->tail = newSpec;
+    } else {
+        g->spectators->tail->next = newSpec;
+        g->spectators->tail = newSpec;
+    }
+    g->spectators->nbSpectators++;
+
+    return 0;
+}
+
+int remove_spectator_from_game(struct game* g, Client* spectator)
+// Return 0 if successful
+// Return -1 if game or spectator is NULL
+// Return 1 if spectator not found in the game's spectator list
+{
+    if (g == NULL || spectator == NULL) return -1;
+
+    struct listeChaineeSpectateurs* current = g->spectators->head;
+    struct listeChaineeSpectateurs* previous = NULL;
+
+    while (current != NULL) {
+        if (current->spectator == spectator) {
+            // Found the spectator to remove
+            if (previous == NULL) {
+                // Removing head
+                g->spectators->head = current->next;
+            } else {
+                previous->next = current->next;
+            }
+            if (current == g->spectators->tail) {
+                // Removing tail
+                g->spectators->tail = previous;
+            }
+            free(current);
+            g->spectators->nbSpectators--;
+            return 0;
+        }
+        previous = current;
+        current = current->next;
+    }
+
+    return 1; // Spectator not found
 }

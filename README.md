@@ -6,11 +6,12 @@ Fonctions implémentées:
 - Challenge des autres joueurs (pour lancer une partie)
 - Détection des coups interdits lors d'une partie
 - Possibilité pour le serveur de gérer plusieurs parties simultannées (pas pour les mêmes clients)
-- Chat global dans le menu, chat privé dans le menu entre deux clients et chat de partie entre les joueurs
+- Chat global dans le menu, chat privé dans le menu entre deux clients et chat de partie entre les joueurs et leurs spectateurs.
 - Bio des joueurs, modifiable et affichable
-- Ajout/retrait/affichage des Amis (pas de comportement spécial implémenté)
+- Possibilité de lancer des parties privées que seul les amis peuvent voir.
+- Ajout/retrait/affichage des Amis (permet d'observer les parties privées)
 - Affichage du plateau de jeu adapté selon le joueur. (retourne le plateau pour que le côté du joueur soit en face de lui dans son UI)
-- 
+
 
 
 
@@ -35,19 +36,26 @@ Dans le menu :
       Vous allez alors dans le mode saisie de la bio -> voir partie Dans la bio
     - Voir la bio d'un joueur connecté avec "/viewbio [user]".
       Un message est affiché si le joueur n'est pas trouvé ou qu'il n'a pas de bio.
-    - Challenger un joueur avec "/challenge [user]" pour faire une partie avec lui.
+    - Challenger un joueur avec "/challenge [user] [PUBLIC|PRIVATE]" pour faire une partie avec lui.
+      Le paramètre PUBLIC ou PRIVE est obligatoire et permet de définir qui pourra observer la partie.
       Un message est affiché si le joueur n'est pas trouvé ou qu'il n'est pas disponible (déjà en partie).
       Si le joueur existe et est disponible vous allez dans le mode challenge -> voir partie Dans le challenge
     - Ajouter un ami avec "/addfriend [user]"
       Le nombre maximum d'amis est 10.
       Un message est affiché si le joueur n'est pas trouvé, qu'il est déjà votre amis, si vous avez trop d'amis ou qu'il s'agit de vous-même.
+      La relation d'amitié est unidirectionelle, si l'on ajoute quelqu'un comme notre ami, nous ne devenons pas automatiquement son ami.
     - Retirer un ami avec "/removefriend [user]"
       Un message est affiché si e joueur n'est pas trouvé dans votre liste d'amis.
     - Afficher les amis avec "/friends"
-    - Envoyer un message dans le chat global en tapant n'importe quel entrée qui ne commance pas par l'une des commandes.
+    - Envoyer un message dans le chat global en tapant n'importe quel entrée qui ne commance pas par l'une des commandes ou un "/".
     - Envoyer un message privé à un joueur avec "/chat [user] [message]"
-    - Observer la partie d'un autre joueur en partie avec "/spectate [user]" (fonction en développement)
+      Ce message peut être envoyé à n'importe quelle personne connectée, même hors du menu, mais elle ne pourra répondre en privé que en étant dans le menu.
+    - Observer la partie d'un autre joueur en partie avec "/spectate [user]"
+      Ne fonctionne que si la partie est publique ou que l'on est amis avec le joueur.
+      Si l'on est l'ami d'un seul joueur de la partie, il faut impérativement rentrer son nom pour pouvoir observer la partie.
+      Si vous êtes autorisé à observer, vous allez dans le mode spectateur -> voir partie Dans l'observation
     - Vider la partie CHAT de l'UI avec "/clearchat"
+    - Se déconnecter avec "/quit"
 
 
 Dans la bio :
@@ -72,10 +80,10 @@ Dans le challenge :
     Un message est affiché si le joueur n'est pas celui qui a lancé le challenge.
 
 Dans la partie :
-    Une fois dans la partie vous pouvez voir le board ainsi que les scores des joueurs et le joueur qui doit jouer. Si votre score est affiché à gauche vous êtes le joueur 1, votre côté du board est celui avec les lettres majuscules et vous commencez la partie. Si votre score est affiché à droite, vous êtes le joueur 2 et votre côté du board est celui avec les lettres minuscules.
+    Une fois dans la partie vous pouvez voir le board ainsi que les scores des joueurs et le joueur qui doit jouer. Si votre score est affiché à gauche vous êtes le joueur 1, votre côté du board est celui avec les lettres majuscules et vous commencez la partie. Si votre score est affiché à droite, vous êtes le joueur 2 et votre côté du board est celui avec les lettres minuscules. (Le plateau se tourne pour vous montrer toujours votre côté toujours plus proche de vous)
     Le sens de semis est anti-horaire.
     En partie, vous pouvez :
-    - Ecrire dans le chat de la partie en tapant un texte ne commençant pas par une commande
+    - Ecrire dans le chat de la partie en tapant un texte ne commençant pas par une commande ou un "/"
     - Jouer un move avec "/move [pit]" (pit la lettre du trou que vous voulez semer)
     Un message s'affiche si vous ne pouvez pas jouer ce pit vous expliquant la raison.
     Si vous avez joué un move valide, un message est affiché pour indiquer à vous et à votre adversaire le pit choisis.
@@ -83,6 +91,16 @@ Dans la partie :
     - Quitter la partie avec "/quitgame"
     Vous retournez alors dans le menu (avec l'autre joueur) -> Voir la partie Dans le menu
     Les joueurs reçoivent un message quand la partie est finie, mais ils restent dans la partie pour pouvoir voir le board final, discuter avec leur adversaire plus longtemps ou tenter de trouver un résultat différent dans le cas d'une fin par boucle (retour dans une situation déjà rencontrée). Les joueurs doivent donc quitter d'eux-même une fois qu'ils sont satisfaits.
+    Lorsque l'un des joueurs se déconnecte, cependant tous les joueurs/observateurs sont renvoyés au menu.
+    Même en quittant la partie, le dernier état du plateau reste affiché dans la partie BOARD de l'UI.
+    - Vider la partie CHAT de l'UI avec "/clearchat"
+
+Dans l'observation :
+    Dans le mode observation, vous voyez le plateau comme les joueurs en temps réel (orienté comme joueur1). Lorsque vous arrivez dans une partie en observation, les joueurs et spectateurs précedents sont prévenus de vottre arivée. Vous pouvez dans ce mode :
+    - Quitter la partie avec "/quitgame"
+    Vous retournez alors dans le menu -> Voir la partie Dans le menu
+    Vous ne ferez pas quitter la partie aux joueurs ou aux autres spectateurs, mais ils recevrons un message sur leur UI pour les prévenir de vottre départ.
+    - Ecrire dans le chat de la partie en tapant un texte ne commençant pas par une commande ou un "/"
     - Vider la partie CHAT de l'UI avec "/clearchat"
 
 

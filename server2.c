@@ -104,7 +104,7 @@ void server_app(void)
          char username[BUF_SIZE];
          if (sscanf(buffer, "%s %s", command, username) == 2 && strcmp(command, "REGISTER") == 0)
          {
-            Client c = { csock, "", {{0}}, {{0}}, 0, STATE_LOBBY, -1, -1, NULL };
+            Client c = { csock, "", {{0}}, {{0}}, 0, STATE_LOBBY, -1, -1, -1, NULL };
             strncpy(c.name, username, BUF_SIZE - 1);
 
             if (load_player_data(&c)) {
@@ -120,6 +120,7 @@ void server_app(void)
                c.opponent = -1;
                c.challenging_who = -1;
                c.num_friends = 0;
+               c.challenge_mode = -1;
                save_player_data(&c);
                write_client(csock, "Welcome! You are registered.");
             }
@@ -146,26 +147,44 @@ void server_app(void)
             if(FD_ISSET(clients[i].sock, &rdfs))
             {
                int c = read_client(clients[i].sock, buffer);
+
                /* client disconnected */
                if(c == 0)
                {
                   handle_client_disconnection(clients, i, &actual);
                }
+
+               /* This if else checks the state of the client to know what imputs to expect */
                if (clients[i].state == STATE_LOBBY) {
+               // Handle commands in the lobby state
+
+                  
                   if (strcmp(buffer, "/list") == 0) {
+                  // List command : to see online users
+
                      char user_list[BUF_SIZE] = "Online users:\n";
                      for (int j = 0; j < actual; j++) {
                         strncat(user_list, clients[j].name, BUF_SIZE - strlen(user_list) - 1);
                         strncat(user_list, "\n", BUF_SIZE - strlen(user_list) - 1);
                      }
                      write_client(clients[i].sock, user_list);
+
                   } else if (strcmp(buffer, "/quit") == 0) {
+                  // Quit command : to disconnect from the server
+
                      handle_client_disconnection(clients, i, &actual);
+
                   } else if (strncmp(buffer, "/challenge", 10) == 0) {
+                  // Challenge command : to challenge another player
+
                      char challenged_name[BUF_SIZE];
-                     if (sscanf(buffer, "/challenge %s", challenged_name) == 1) {
+                     char mode[BUF_SIZE];
+                     
+                     //Checkes if the command is well formatted
+                     if (sscanf(buffer, "/challenge %s %s", challenged_name, mode) == 2) {
                         int challenger_idx = i;
                         int challenged_idx = -1;
+                        // Search for the challenged player
                         for(int j=0; j<actual; j++) {
                            if(strcmp(clients[j].name, challenged_name) == 0) {
                               challenged_idx = j;
@@ -173,7 +192,9 @@ void server_app(void)
                            }
                         }
 
-                        if(challenged_idx != -1) {
+                        if(challenged_idx != -1 && (strcmp(mode, "PUBLIC") == 0 || strcmp(mode, "PRIVATE") == 0)) {
+                        // If the challenged player is found and the mode is correct
+
                            if (challenged_idx == challenger_idx) {
                               write_client(clients[i].sock, "You can't challenge yourself.");
                            } else if (clients[challenged_idx].state != STATE_LOBBY) {
@@ -182,10 +203,13 @@ void server_app(void)
                               clients[challenged_idx].state = STATE_CHALLENGED;
                               clients[challenger_idx].state = STATE_CHALLENGING;
                               clients[challenger_idx].challenging_who = challenged_idx;
+                              clients[challenger_idx].challenge_mode = (strcmp(mode, "PUBLIC") == 0) ? 0 : 1; // 0 for PUBLIC, 1 for PRIVATE
 
-                              snprintf(challenge_msg, sizeof(challenge_msg), "CHALLENGE_FROM %s\nPlease answer his challenge.", clients[challenger_idx].name);
+                              // Notify the challenged player
+                              snprintf(challenge_msg, sizeof(challenge_msg) - strlen(challenge_msg), "%s_CHALLENGE_FROM %s\nPlease answer his challenge.", mode, clients[challenger_idx].name);
                               write_client(clients[challenged_idx].sock, challenge_msg);
 
+                              // Change states of both players in their clients
                               char msg[BUF_SIZE];
                               snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_CHALLENGED);
                               write_client(clients[challenged_idx].sock, msg);
@@ -193,20 +217,27 @@ void server_app(void)
                               snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_CHALLENGING);
                               write_client(clients[challenger_idx].sock, msg);
 
+                              // Puts the challenger's CHAT in challenging state and notifies him
                               write_client(clients[challenger_idx].sock, "CLEAR_CHAT");
-                              snprintf(msg, sizeof(msg) - strlen(msg), "You have challenged %s.", clients[challenged_idx].name);
+                              snprintf(msg, sizeof(msg) - strlen(msg), "You have challenged %s in mode %s.", clients[challenged_idx].name, mode);
                               write_client(clients[challenger_idx].sock, msg);
                               
                            }
-                        } else {
+                        } else if (challenged_idx == -1) {
                            write_client(clients[i].sock, "Player not found");
+                        } else {
+                           write_client(clients[i].sock, "Usage: /challenge <username> [PUBLIC|PRIVATE]");
                         }
                      } else {
-                        write_client(clients[i].sock, "Usage: /challenge <username>");
+                        write_client(clients[i].sock, "Usage: /challenge <username> [PUBLIC|PRIVATE]");
                      }
+
                   } else if (strcmp(buffer, "/bio") == 0) {
+                  // Bio command : to edit/view your bio
+
                      clients[i].state = STATE_BIO;
                      char msg[BUF_SIZE];
+                     // Clear chat, updates state and show current bio
                      write_client(clients[i].sock, "CLEAR_CHAT");
                      snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_BIO);
                      write_client(clients[i].sock, msg);
@@ -222,7 +253,11 @@ void server_app(void)
                      } else {
                         write_client(clients[i].sock, bio_response);
                      }
+
                   } else if (strncmp(buffer, "/viewbio", 8) == 0) {
+                  // Viewbio command : to view your bio or another player's bio
+
+                     // Searches for the username in the command
                      char username[BUF_SIZE];
                      if (sscanf(buffer, "/viewbio %s", username) == 1) {
                         int user_idx = -1;
@@ -233,6 +268,7 @@ void server_app(void)
                            }
                         }
 
+                        // If the user is found, display their bio
                         if (user_idx != -1) {
                            snprintf(bio_response, sizeof(bio_response), "Bio for user %s:\n", clients[user_idx].name);
                            for (int j = 0; j < BIO_MAX_LINES; j++) {
@@ -241,19 +277,26 @@ void server_app(void)
                                  strncat(bio_response, "\n", BUF_SIZE - strlen(bio_response) - 1);
                               }
                            }
-                           if (strlen(bio_response) == (strlen(clients[user_idx].name) + 15)) { // only the header
+                           if (strlen(bio_response) == (strlen(clients[user_idx].name) + 15)) {
+                           // If only the header is found the user has no bio, so we inform the requester without clearing the chat
                               write_client(clients[i].sock, "This user has no bio.");
                            } else {
+                           // Otherwise we clear the chat and show the bio
                               write_client(clients[i].sock, "CLEAR_CHAT");
                               write_client(clients[i].sock, bio_response);
                            }
+
                         } else {
                            write_client(clients[i].sock, "User not found.");
                         }
+
                      } else {
                         write_client(clients[i].sock, "Usage: /viewbio <username>");
                      }
+
                   } else if (strcmp(buffer, "/friends") == 0) {
+                  // Friends command : to see your friends list
+
                      char friend_list[BUF_SIZE] = "Your friends:\n";
                      int friend_count = 0;
                      for (int j = 0; j < clients[i].num_friends; j++) {
@@ -261,13 +304,18 @@ void server_app(void)
                         strncat(friend_list, "\n", BUF_SIZE - strlen(friend_list) - 1);
                         friend_count++;
                      }
+
                      if (friend_count == 0) {
                         write_client(clients[i].sock, "You have no friends.");
                      } else {
                         write_client(clients[i].sock, "CLEAR_CHAT");
                         write_client(clients[i].sock, friend_list);
                      }
+
                   } else if (strncmp(buffer, "/removefriend", 13) == 0) {
+                  // Removefriend command : to remove a player from your friends list
+
+                     // Searches for the friend's username in the command
                      char friend_name[BUF_SIZE];
                      if (sscanf(buffer, "/removefriend %s", friend_name) == 1) {
                         int friend_idx = -1;
@@ -279,6 +327,7 @@ void server_app(void)
                         }
 
                         if (friend_idx != -1) {
+                        // If the friend is found, remove them from the list
                            for (int j = friend_idx; j < clients[i].num_friends - 1; j++) {
                               strcpy(clients[i].friends[j], clients[i].friends[j + 1]);
                            }
@@ -287,10 +336,15 @@ void server_app(void)
                         } else {
                            write_client(clients[i].sock, "User not found in your friend list.");
                         }
+
                      } else {
                         write_client(clients[i].sock, "Usage: /removefriend <username>");
                      }
+
                   } else if (strncmp(buffer, "/addfriend", 10) == 0) {
+                  // Addfriend command : to add a player to your friends list
+
+                     // Searches for the friend's username in the command
                      char friend_name[BUF_SIZE];
                      if (sscanf(buffer, "/addfriend %s", friend_name) == 1) {
                         int friend_idx = -1;
@@ -324,25 +378,35 @@ void server_app(void)
                                  } else {
                                     write_client(clients[i].sock, "Your friend list is full.");
                                  }
+
                               }
+
                            }
+
                         } else {
                            write_client(clients[i].sock, "User not found.");
                         }
+
                      } else {
                         write_client(clients[i].sock, "Usage: /addfriend <username>");
                      }
+
                   } else if (strncmp(buffer, "/chat", 5) == 0) {
+                  // Chat command : to send a private message to another player
+
                      char *recipient_name = strtok(buffer + 6, " ");
                      char *msg = strtok(NULL, "");
                      if (recipient_name && msg && strlen(msg) > 0) {
                         int recipient_idx = -1;
                         for (int j = 0; j < actual; j++) {
+                        // Search for the recipient player
                            if (strcmp(clients[j].name, recipient_name) == 0) {
                               recipient_idx = j;
                               break;
                            }
+
                         }
+
                         if (recipient_idx != -1) {
                            if (recipient_idx == i) {
                               write_client(clients[i].sock, "You can't chat with yourself.");
@@ -352,22 +416,111 @@ void server_app(void)
                               snprintf(final_msg, sizeof(final_msg), "(private) From you to %s: %s", clients[recipient_idx].name, msg);
                               write_client(clients[i].sock, final_msg);
                            }
+
                         } else {
                            write_client(clients[i].sock, "Player not found");
                         }
+
                      } else {
                         write_client(clients[i].sock, "Usage: /chat <username> <message>");
                      }
-                  } else {
+
+                  } else if (strncmp(buffer, "/spectate", 5) == 0) {
+                  // Spectate command : to spectate another player's game
+
+                     char spectated_name[BUF_SIZE];
+
+                     if (sscanf(buffer, "/spectate %s", spectated_name) == 1) {
+                     // Checks for the username in the command
+                        int spectated_idx = -1;
+                        for(int j=0; j<actual; j++) {
+                           if(strcmp(clients[j].name, spectated_name) == 0) {
+                              spectated_idx = j;
+                              break;
+                           }
+                        }
+
+                        if (spectated_idx != -1) {
+
+                           // Check if the spectated player is a friend
+                           int friend = 0;
+                           for(int j=0; j<clients[spectated_idx].num_friends; j++) {
+                              if(strcmp(clients[spectated_idx].friends[j], clients[i].name) == 0) {
+                                 friend = 1;
+                                 break;
+                              }
+                           }
+
+                           if (clients[spectated_idx].state != STATE_INGAME) {
+
+                              write_client(clients[i].sock, "This player is not currently in a game.");
+
+                           } else if (clients[spectated_idx].Currentboard->gameRef->gameMode == PUBLIC || friend) {
+                           // If the game is public or the requester is a friend, allow spectating
+
+                              // Notify that the client is now spectating
+                              clients[i].state = STATE_SPECTATE;
+                              struct game* g = clients[spectated_idx].Currentboard->gameRef;
+                           
+                              write_client(clients[i].sock, "CLEAR_CHAT");
+                              char msg[BUF_SIZE];
+                              snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_SPECTATE);
+                              write_client(clients[i].sock, msg);
+
+                              snprintf(msg, BUF_SIZE, "CHANGE_BOARD%s", convert_board_to_string(clients[spectated_idx].Currentboard));
+                              write_client(clients[i].sock, msg);
+
+                              snprintf(msg, sizeof(msg) - strlen(msg), "You are now spectating %s.", clients[spectated_idx].name);
+                              write_client(clients[i].sock, msg);
+
+                              clients[i].Currentboard = clients[spectated_idx].Currentboard;
+
+                              /* Notify the players */
+                              snprintf(msg, sizeof(msg) - strlen(msg), "%s is now spectating your game.", clients[i].name);
+                              write_client(g->player1->sock, msg);
+                              write_client(g->player2->sock, msg);
+
+                              /* Notify other spectators */
+                              snprintf(msg, sizeof(msg) - strlen(msg), "%s is now spectating the game.", clients[i].name);
+                              struct listeChaineeSpectateurs* current = g->spectators->head;
+                              while (current != NULL) {
+                                 write_client(current->spectator->sock, msg);
+                                 current = current->next;
+                              }
+
+                              /* Add new spectator to spectator list */
+                              add_spectator_to_game(g, &clients[i]);
+                           } else {
+                              write_client(clients[i].sock, "You can't spectate this player's game because you are not on their friends list and the game is private.");
+                           }
+
+                        } else {
+                           write_client(clients[i].sock, "Player not found");
+                        }
+
+                     }
+
+                  }else if (buffer[0] != '/') {
+                  // General message to all players in the lobby
+
                      snprintf(final_msg, sizeof(final_msg) - strlen(final_msg), "%s: %s", clients[i].name, buffer);
                      for (int j = 0; j < actual; j++) {
                         if (clients[j].state == STATE_LOBBY) {
                            write_client(clients[j].sock, final_msg);
                         }
+
                      }
+
+                  } else {
+                     write_client(clients[i].sock, "Your command was not recognised.\nYou are in the lobby. The available commands are /list, /bio, /viewbio [user], /challenge [user], /addfriend [user], /removefriend [user], /friends, /chat [user] [message], /spectate [user], /clearchat, /quit");
                   }
+
                } else if (clients[i].state == STATE_CHALLENGING) {
+               // Handle commands in the challenging state
+
                   if (strcmp(buffer, "/cancelchallenge") == 0) {
+                  // Cancelchallenge command : to cancel a challenge sent to another player
+
                      int challenged_idx = clients[i].challenging_who;
                      if (challenged_idx != -1) {
                         clients[challenged_idx].state = STATE_LOBBY;
@@ -385,11 +538,17 @@ void server_app(void)
                      } else {
                         write_client(clients[i].sock, "You are not challenging anyone.");
                      }
+
                   } else {
                      write_client(clients[i].sock, "You are currently challenging a player. Only /cancelchallenge is available.");
                   }
+
                } else if (clients[i].state == STATE_CHALLENGED) {
+               // Handle commands in the challenged state
+
                   if (strncmp(buffer, "/accept", 7) == 0) {
+                  // Accept command : to accept a challenge from another player
+
                      char challenger_name[BUF_SIZE];
                      if (sscanf(buffer, "/accept %s", challenger_name) == 1) {
                         int challenger_idx = -1;
@@ -407,6 +566,9 @@ void server_app(void)
                            clients[i].opponent = challenger_idx;
                            clients[challenger_idx].challenging_who = -1;
 
+                           write_client(clients[challenger_idx].sock, "CLEAR_CHAT");
+                           write_client(clients[i].sock, "CLEAR_CHAT");
+
                            snprintf(acceptance_msg, sizeof(acceptance_msg) - strlen(acceptance_msg), "CHALLENGE_ACCEPTED %s. You are now playing with %s.", clients[challenger_idx].name, clients[i].name);
                            write_client(clients[challenger_idx].sock, acceptance_msg);
 
@@ -419,7 +581,7 @@ void server_app(void)
                            write_client(clients[i].sock, msg);
 
                            
-                           struct game* g = create_game(&clients[i], &clients[challenger_idx], PUBLIC);
+                           struct game* g = create_game(&clients[i], &clients[challenger_idx], (clients[challenger_idx].challenge_mode == 0) ? PUBLIC : PRIVATE);
                            struct board* b = create_board(g);
                            clients[i].Currentboard = b;
                            clients[challenger_idx].Currentboard = b;
@@ -476,6 +638,7 @@ void server_app(void)
                      int opponent_idx = clients[i].opponent;
 
                      /* Notify the player who quit */
+                     write_client(clients[i].sock, "CLEAR_CHAT");
                      write_client(clients[i].sock, "You have quit the game. You are now back in the lobby.");
                      clients[i].state = STATE_LOBBY;
                      clients[i].opponent = -1;
@@ -485,12 +648,35 @@ void server_app(void)
 
                      /* Notify the opponent */
                      if (opponent_idx != -1) {
+                        write_client(clients[opponent_idx].sock, "CLEAR_CHAT");
                         write_client(clients[opponent_idx].sock, "Your opponent has quit the game. You are now back in the lobby.");
                         clients[opponent_idx].state = STATE_LOBBY;
                         clients[opponent_idx].opponent = -1;
-                        snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_LOBBY);
+                        clients[opponent_idx].Currentboard = NULL;
                         write_client(clients[opponent_idx].sock, msg);
+                        opponent_idx = -1; // Mark that opponent has been handled
                      }
+
+                     /* Notify the spectators */
+                     struct game* g = clients[i].Currentboard->gameRef;
+                     struct listeChaineeSpectateurs* currentSpec = g->spectators->head;
+                     while (currentSpec != NULL) {
+                        struct listeChaineeSpectateurs* temp = currentSpec;
+                        currentSpec = currentSpec->next;
+                        write_client(temp->spectator->sock, "CLEAR_CHAT");
+                        write_client(temp->spectator->sock, "A player has quit the game. You are now back in the lobby.");
+                        temp->spectator->state = STATE_LOBBY;
+                        temp->spectator->Currentboard = NULL;
+                        write_client(temp->spectator->sock, msg);
+                     }
+
+                     if (opponent_idx == -1 && g->spectators->nbSpectators == 0) {
+                        /* No one left in the game, clean up */
+                        delete_the_game(clients[i].Currentboard->gameRef);
+                        delete_the_board(clients[i].Currentboard);
+                     }
+                     clients[i].Currentboard = NULL;
+
                   } else if (strncmp(buffer, "/move", 5) == 0) {
                      char move_letter[BUF_SIZE];
                      if (sscanf(buffer, "/move %s", move_letter) == 1) {
@@ -527,34 +713,57 @@ void server_app(void)
                            }
                            write_client(client1->sock, err_msg);
                         } else {
+                           /* Notify about the move */
                            char board_update_msg[BUF_SIZE];
                            snprintf(board_update_msg, BUF_SIZE - strlen(board_update_msg), "%s chose to sow from %c", client1->name, move_letter[0]);
                            write_client(client1->sock, board_update_msg);
                            write_client(client2->sock, board_update_msg);
+
+                           /* Update the boards */
                            char msg[BUF_SIZE];
                            snprintf(msg, BUF_SIZE, "CHANGE_BOARD %s", convert_board_to_string_player_view(client1->Currentboard, client1));
                            char msg2[BUF_SIZE];
                            snprintf(msg2, BUF_SIZE, "CHANGE_BOARD %s", convert_board_to_string_player_view(client1->Currentboard, client2));
+                           char msg3[BUF_SIZE];
+                           snprintf(msg3, BUF_SIZE, "CHANGE_BOARD %s", convert_board_to_string(client1->Currentboard));
                            write_client(client1->sock, msg);
                            write_client(client2->sock, msg2);
+
+                           /* If the game is over, notify */
                            char msgend[BUF_SIZE];
                            if (res == 1) {
                               int diff = client1->Currentboard->gameRef->scoreP1 - client1->Currentboard->gameRef->scoreP2;
                               if (diff == 0) {
-                                    write_client(client1->sock, "The game is over! It's a tie!");
-                                    write_client(client2->sock, "The game is over! It's a tie!");
+                                    snprintf(msgend, sizeof(msgend) - strlen(msgend), "The game is over! It's a tie!");
+                                    write_client(client1->sock, msgend);
+                                    write_client(client2->sock, msgend);
                               } else if (diff > 0) {
-                                    snprintf(msgend, sizeof(msg) - strlen(msgend), "The game is over! %s wins %d to %d!", client1->Currentboard->gameRef->player1->name, client1->Currentboard->gameRef->scoreP1, client1->Currentboard->gameRef->scoreP2);
+                                    snprintf(msgend, sizeof(msgend) - strlen(msgend), "The game is over! %s wins %d to %d!", client1->Currentboard->gameRef->player1->name, client1->Currentboard->gameRef->scoreP1, client1->Currentboard->gameRef->scoreP2);
                                     write_client(client1->sock, msgend);
                                     write_client(client2->sock, msgend);
                               } else if (diff < 0) {
-                                    snprintf(msgend, sizeof(msg) - strlen(msgend), "The game is over! %s wins %d to %d!", client1->Currentboard->gameRef->player2->name, client1->Currentboard->gameRef->scoreP2, client1->Currentboard->gameRef->scoreP1);
+                                    snprintf(msgend, sizeof(msgend) - strlen(msgend), "The game is over! %s wins %d to %d!", client1->Currentboard->gameRef->player2->name, client1->Currentboard->gameRef->scoreP2, client1->Currentboard->gameRef->scoreP1);
                                     write_client(client1->sock, msgend);
                                     write_client(client2->sock, msgend);
                                     break;
                               }
+                              strncat(msgend, "You can quit with /quitgame.", sizeof(msgend) - strlen(msgend) - 1);
                               write_client(client1->sock, "You can quit with /quitgame.");
                               write_client(client2->sock, "You can quit with /quitgame.");
+
+                              
+                              
+                           }
+                           /* Notify the spectators of all previous messages that were sent to the players */
+                           struct listeChaineeSpectateurs* currentSpec = client1->Currentboard->gameRef->spectators->head;
+                           while (currentSpec != NULL) {
+                              struct listeChaineeSpectateurs* temp = currentSpec;
+                              currentSpec = currentSpec->next;
+                              write_client(temp->spectator->sock, board_update_msg);
+                              write_client(temp->spectator->sock, msg3);
+                              if (res == 1) {
+                                 write_client(temp->spectator->sock, msgend);
+                              }
                            }
                         }
                      }
@@ -564,10 +773,21 @@ void server_app(void)
                   } else if (buffer[0] != '/') {
                      char final_msg[BUF_SIZE];
                      snprintf(final_msg, BUF_SIZE - strlen(final_msg), "%s: %s", clients[i].name, buffer);
+
+                     /* Send to players */
                      write_client(clients[clients[i].opponent].sock, final_msg);
                      write_client(clients[i].sock, final_msg);
+
+                     /* Send to spectators */
+                     struct listeChaineeSpectateurs* currentSpec = clients[i].Currentboard->gameRef->spectators->head;
+                     while (currentSpec != NULL) {
+                        struct listeChaineeSpectateurs* temp = currentSpec;
+                        currentSpec = currentSpec->next;
+                        write_client(temp->spectator->sock, final_msg);
+                     }
+
                   } else {
-                     write_client(clients[i].sock, "You are in a game. Only /quitgame, /move <pit_number> or in-game chat are available.");
+                     write_client(clients[i].sock, "You are in a game. Only /quitgame, /move <pit_number>, /clearchat and in-game chat are available.");
                   }
                } else if (clients[i].state == STATE_BIO) {
                   if (strcmp(buffer, "/endbio") == 0) {
@@ -591,6 +811,58 @@ void server_app(void)
                            break;
                         }
                      }
+                  }
+               } else if (clients[i].state == STATE_SPECTATE) {
+                  if (strcmp(buffer, "/quitgame") == 0) {
+                     /* Notify the player who quit */
+                     write_client(clients[i].sock, "CLEAR_CHAT");
+                     write_client(clients[i].sock, "You have quit the game. You are now back in the lobby.");
+                     clients[i].state = STATE_LOBBY;
+                     char msg[BUF_SIZE];
+                     snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_LOBBY);
+                     write_client(clients[i].sock, msg);
+
+                     /* Notify the players */
+                     Client* player1 = clients[i].Currentboard->gameRef->player1;
+                     Client* player2 = clients[i].Currentboard->gameRef->player2;
+                     char notify_msg[BUF_SIZE];
+                     snprintf(notify_msg, sizeof(notify_msg) - strlen(notify_msg), "%s stopped viewing your game.", clients[i].name);
+                     write_client(player1->sock, notify_msg);
+                     write_client(player2->sock, notify_msg);
+
+                     /* Remove leaving spectator from the game's spectator list */
+                     remove_spectator_from_game(clients[i].Currentboard->gameRef, &clients[i]);
+
+                     /* Notify the spectators */
+                     struct listeChaineeSpectateurs* currentSpec = clients[i].Currentboard->gameRef->spectators->head;
+                     while (currentSpec != NULL) {
+                        struct listeChaineeSpectateurs* temp = currentSpec;
+                        currentSpec = currentSpec->next;
+                        char notify_msg_spec[BUF_SIZE];
+                        snprintf(notify_msg_spec, sizeof(notify_msg_spec) - strlen(notify_msg_spec), "%s stopped viewing the game.", clients[i].name);
+                        write_client(temp->spectator->sock, notify_msg_spec);
+                     }
+
+                     clients[i].Currentboard = NULL;
+                  
+                  } else if (buffer[0] != '/') {
+                     char final_msg[BUF_SIZE];
+                     snprintf(final_msg, BUF_SIZE - strlen(final_msg), "%s: %s", clients[i].name, buffer);
+
+                     /* Send to players */
+                     write_client(clients[i].Currentboard->gameRef->player1->sock, final_msg);
+                     write_client(clients[i].Currentboard->gameRef->player2->sock, final_msg);
+
+                     /* Send to spectators */
+                     struct listeChaineeSpectateurs* currentSpec = clients[i].Currentboard->gameRef->spectators->head;
+                     while (currentSpec != NULL) {
+                        struct listeChaineeSpectateurs* temp = currentSpec;
+                        currentSpec = currentSpec->next;
+                        write_client(temp->spectator->sock, final_msg);
+                     }
+
+                  } else {
+                     write_client(clients[i].sock, "You are watching a game. Only /quitgame, /clearchat and in-game chat are available.");
                   }
                } else {
                   /* Fallback for unhandled states or commands */
@@ -720,6 +992,29 @@ void handle_client_disconnection(Client *clients, int i, int *actual)
 
          snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_LOBBY);
          write_client(clients[opponent_idx].sock, msg);
+         opponent_idx = -1;
+      }
+
+      /* If there were other spectators, notify them */
+      if (clients[i].Currentboard->gameRef->spectators->nbSpectators != 0) {
+         struct game* g = clients[i].Currentboard->gameRef;
+         struct listeChaineeSpectateurs* currentSpec = g->spectators->head;
+
+         while (currentSpec != NULL) {
+            struct listeChaineeSpectateurs* temp = currentSpec;
+            currentSpec = currentSpec->next;
+            snprintf(msg, sizeof(msg), "The player %s has disconnected. You are back in the lobby.", clients[i].name);
+            write_client(temp->spectator->sock, msg);
+
+            snprintf(msg, BUF_SIZE, "STATE_UPDATE %d", STATE_LOBBY);
+            write_client(temp->spectator->sock, msg);
+         }
+      }
+
+      if (opponent_idx == -1 && clients[i].Currentboard->gameRef->spectators->nbSpectators == 0) {
+         /* No one left in the game, clean up */
+         delete_the_game(clients[i].Currentboard->gameRef);
+         delete_the_board(clients[i].Currentboard);
       }
    } else if (clients[i].state == STATE_CHALLENGING) {
       int challenged_idx = clients[i].challenging_who;
@@ -741,6 +1036,27 @@ void handle_client_disconnection(Client *clients, int i, int *actual)
             write_client(clients[j].sock, msg);
             break;
          }
+      }
+   } else if (clients[i].state == STATE_SPECTATE) {
+      /* Remove leaving spectator from the game's spectator list */
+      remove_spectator_from_game(clients[i].Currentboard->gameRef, &clients[i]);
+
+      /* Notify the players */
+      Client* player1 = clients[i].Currentboard->gameRef->player1;
+      Client* player2 = clients[i].Currentboard->gameRef->player2;
+      char notify_msg[BUF_SIZE];
+      snprintf(notify_msg, sizeof(notify_msg) - strlen(notify_msg), "%s stopped viewing your game.", clients[i].name);
+      write_client(player1->sock, notify_msg);
+      write_client(player2->sock, notify_msg);
+
+      /* Notify the other spectators */
+      struct listeChaineeSpectateurs* currentSpec = clients[i].Currentboard->gameRef->spectators->head;
+      while (currentSpec != NULL) {
+         struct listeChaineeSpectateurs* temp = currentSpec;
+         currentSpec = currentSpec->next;
+         char notify_msg_spec[BUF_SIZE];
+         snprintf(notify_msg_spec, sizeof(notify_msg_spec) - strlen(notify_msg_spec), "%s stopped viewing the game.", clients[i].name);
+         write_client(temp->spectator->sock, notify_msg_spec);
       }
    }
 
